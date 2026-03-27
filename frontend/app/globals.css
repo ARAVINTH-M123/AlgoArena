@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-platform-bg text-platform-text antialiased;
+  background-image: radial-gradient(circle at 20% 0%, rgba(34, 197, 94, 0.08), transparent 35%), radial-gradient(circle at 100% 10%, rgba(22, 50, 15, 0.35), transparent 30%);
+}
+
+.panel {
+  @apply rounded-xl border border-platform-border bg-platform-panel p-4 shadow-glow transition-all duration-300;
+}
+
+.btn-accent {
+  @apply rounded-lg bg-platform-accent px-4 py-2 font-semibold text-black hover:brightness-110 transition;
+}
+
+.input-dark {
+  @apply w-full rounded-lg border border-platform-border bg-black px-3 py-2 text-platform-text focus:border-platform-accent focus:outline-none focus:ring-2 focus:ring-platform-accent/40;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(34, 197, 94, 0.65);
+  outline-offset: 2px;
+}

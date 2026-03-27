@@ -1,0 +1,5 @@
+1)remove the dummy data in leaderboard
+2)add abilities to admin like add problem and delete and modify
+3)for admin remove submission option from menu(only for admin)
+
+do correctly and slowly

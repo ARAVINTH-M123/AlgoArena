@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: problem-solving-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/problem_platform}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:itspostgresql}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: cHJvYmxlbS1zb2x2aW5nLXBsYXRmb3JtLXNlY3VyZS1qd3Qtc2VjcmV0LWtleS0yMDI2
+    expiration-ms: 86400000
