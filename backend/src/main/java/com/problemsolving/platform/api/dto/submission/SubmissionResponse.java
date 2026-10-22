@@ -1,5 +1,7 @@
 package com.problemsolving.platform.api.dto.submission;
 
+import com.problemsolving.platform.api.dto.nation.NationAwardSummaryDto;
+
 import java.time.LocalDateTime;
 
 public class SubmissionResponse {
@@ -13,6 +15,7 @@ public class SubmissionResponse {
     private final String actualOutput;
     private final String failedTestcaseInput;
     private final String executionMessage;
+    private final NationAwardSummaryDto nationAward;
 
     public SubmissionResponse(Long id,
                               String problemTitle,
@@ -22,7 +25,8 @@ public class SubmissionResponse {
                               String expectedOutput,
                               String actualOutput,
                               String failedTestcaseInput,
-                              String executionMessage) {
+                              String executionMessage,
+                              NationAwardSummaryDto nationAward) {
         this.id = id;
         this.problemTitle = problemTitle;
         this.language = language;
@@ -32,6 +36,7 @@ public class SubmissionResponse {
         this.actualOutput = actualOutput;
         this.failedTestcaseInput = failedTestcaseInput;
         this.executionMessage = executionMessage;
+        this.nationAward = nationAward;
     }
 
     public Long getId() {
@@ -68,5 +73,9 @@ public class SubmissionResponse {
 
     public String getExecutionMessage() {
         return executionMessage;
+    }
+
+    public NationAwardSummaryDto getNationAward() {
+        return nationAward;
     }
 }
