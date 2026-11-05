@@ -1,5 +1,7 @@
 package com.problemsolving.platform.api.dto.submission;
 
+import com.problemsolving.platform.api.dto.nation.NationResultDto;
+
 import java.time.LocalDateTime;
 
 public class SubmissionResponse {
@@ -13,6 +15,7 @@ public class SubmissionResponse {
     private final String actualOutput;
     private final String failedTestcaseInput;
     private final String executionMessage;
+    private final NationResultDto nationResult;
 
     public SubmissionResponse(Long id,
                               String problemTitle,
@@ -23,6 +26,20 @@ public class SubmissionResponse {
                               String actualOutput,
                               String failedTestcaseInput,
                               String executionMessage) {
+        this(id, problemTitle, language, verdict, submittedAt, expectedOutput, actualOutput,
+                failedTestcaseInput, executionMessage, null);
+    }
+
+    public SubmissionResponse(Long id,
+                              String problemTitle,
+                              String language,
+                              String verdict,
+                              LocalDateTime submittedAt,
+                              String expectedOutput,
+                              String actualOutput,
+                              String failedTestcaseInput,
+                              String executionMessage,
+                              NationResultDto nationResult) {
         this.id = id;
         this.problemTitle = problemTitle;
         this.language = language;
@@ -32,6 +49,7 @@ public class SubmissionResponse {
         this.actualOutput = actualOutput;
         this.failedTestcaseInput = failedTestcaseInput;
         this.executionMessage = executionMessage;
+        this.nationResult = nationResult;
     }
 
     public Long getId() {
@@ -68,5 +86,9 @@ public class SubmissionResponse {
 
     public String getExecutionMessage() {
         return executionMessage;
+    }
+
+    public NationResultDto getNationResult() {
+        return nationResult;
     }
 }

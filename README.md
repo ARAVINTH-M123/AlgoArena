@@ -145,6 +145,52 @@ Frontend URL: `http://localhost:3000`
 
 `GET /api/leaderboard/contest/{contestId}`
 
+## Nation system
+
+Every user owns one personal **nation** that grows from empty land into a futuristic nation as they solve problems.
+It is shown on the profile page (`/profile/<username>`) and its rank appears on the leaderboard.
+
+**How it works**
+
+- An accepted submission calls `NationService.awardForAcceptedSolve(...)`, the single integration point.
+- A first solve gives Nation XP (easy 10, medium 30, hard 70) and track points for three build tracks:
+  **Basics**, **Structures** and **Landmarks**. Items are built in a fixed order; leftover points carry over.
+- After the 5th easy first-solve of a (nation-local) day, further easy solves give half. Solving a problem again
+  after 24 hours gives a tiny 0.01% bonus; before that, nothing.
+- Ten ranks: Null, Init, Boot, Root, Kernel, Stack, Cloud, Core, Quantum, Singularity, each with sub-tiers I to III.
+  A rank-up needs enough XP, enough medium/hard solves, (for the top ranks) enough active days, and the rank's
+  **gate landmark** to be built. Ranks never go down.
+- **Presence**: a half-body figure behind the mountain shows whether the owner is online, idle or offline, live for
+  visitors. Owners can choose "Appear offline".
+
+**Configuration** (`application.yaml`, prefix `nation`)
+
+```yaml
+nation:
+  award-enabled: true   # set to false on any public deployment until the judge runs in a sandbox
+  xp-multiplier: 1      # development speed-up only; keep at 1 in production
+```
+
+All other gameplay numbers (XP, costs, rank table, cooldowns, presence timings) live in
+`config/NationProperties.java`. For presence in production run a single backend instance (the live-session store
+is in memory) and add `spring.threads.virtual.enabled=true`.
+
+**API**
+
+| Endpoint | Access | Purpose |
+|---|---|---|
+| `GET /api/nation/{username}` | public | nation, rank, requirements, tracks, items, presence |
+| `GET /api/nation/me` | login | same, plus the owner's cooldown dates |
+| `PUT /api/nation/me/profile` | login | `{ name?, timeZone?, appearOffline? }` |
+| `POST /api/presence/heartbeat` | login | sent every ~30 s by each open tab |
+| `POST /api/presence/offline` | login | sent when a tab closes |
+| `GET /api/nation/{username}/presence/stream` | public | live presence (Server-Sent Events) |
+
+`POST /api/submissions` returns an extra `nationResult` (XP, track points, completed items, rank-ups).
+`GET /api/leaderboard` rows include `nationName`, `nationRankName`, `nationRankIndex` and `nationTier`.
+
+**Tests**: `cd backend && ./mvnw clean verify` runs the nation and presence unit tests.
+
 ## Notes
 
 - Submission verdicts are currently simulated in backend service to provide a working end-to-end prototype.

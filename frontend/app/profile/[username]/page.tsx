@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import BackArrowButton from "@/components/BackArrowButton";
+import NationSection from "@/components/nation/NationSection";
 
 type Profile = {
   username: string;
@@ -22,6 +23,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
   if (!profile) return <div className="panel">Loading profile...</div>;
 
   return (
+    <div className="space-y-6">
     <section className="panel">
       <BackArrowButton fallbackHref="/leaderboard" className="mb-4" />
       <h1 className="text-2xl font-bold text-platform-accent">{profile.username}</h1>
@@ -31,5 +33,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
         <div><p className="text-gray-400">Accepted</p><p className="text-xl font-bold">{profile.acceptedSubmissions}</p></div>
       </div>
     </section>
+    <NationSection username={profile.username} />
+    </div>
   );
 }

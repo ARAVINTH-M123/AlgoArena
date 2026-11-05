@@ -2,6 +2,7 @@ package com.problemsolving.platform.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.problemsolving.platform.api.dto.nation.NationResultDto;
 import com.problemsolving.platform.api.dto.submission.SubmissionRequest;
 import com.problemsolving.platform.api.dto.submission.SubmissionResponse;
 import com.problemsolving.platform.domain.entity.Problem;
@@ -12,6 +13,10 @@ import com.problemsolving.platform.domain.enums.Verdict;
 import com.problemsolving.platform.repository.ProblemRepository;
 import com.problemsolving.platform.repository.SubmissionRepository;
 import com.problemsolving.platform.repository.UserRepository;
+import com.problemsolving.platform.service.nation.NationService;
+import com.problemsolving.platform.service.presence.PresenceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,19 +37,27 @@ import java.util.regex.Pattern;
 @Service
 public class SubmissionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SubmissionService.class);
+
     private final SubmissionRepository submissionRepository;
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final NationService nationService;
+    private final PresenceService presenceService;
 
     public SubmissionService(SubmissionRepository submissionRepository,
                              ProblemRepository problemRepository,
                              UserRepository userRepository,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             NationService nationService,
+                             PresenceService presenceService) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.nationService = nationService;
+        this.presenceService = presenceService;
     }
 
     public SubmissionResponse submit(String username, SubmissionRequest request) {
@@ -68,7 +81,26 @@ public class SubmissionService {
         submission.setVerdict(judgeResult.verdict());
 
         Submission saved = submissionRepository.save(submission);
-        return toResponse(saved, judgeResult);
+
+        // Nation system hook: reward accepted solves. A failure here must never break the submission.
+        NationResultDto nationResult = null;
+        if (saved.getVerdict() == Verdict.ACCEPTED) {
+            try {
+                nationResult = nationService.awardForAcceptedSolve(
+                        user.getId(), problem.getId(), problem.getDifficulty(), Instant.now());
+            } catch (Exception ex) {
+                log.warn("Nation award failed for user {} problem {}: {}", user.getId(), problem.getId(), ex.toString());
+            }
+            if (nationResult != null && "FIRST".equals(nationResult.mode())) {
+                try {
+                    presenceService.markSolved(user.getId(), Instant.now());   // the presence figure glows for a minute
+                } catch (Exception ex) {
+                    log.warn("Presence update failed for user {}: {}", user.getId(), ex.toString());
+                }
+            }
+        }
+
+        return toResponse(saved, judgeResult, nationResult);
     }
 
     public List<SubmissionResponse> mySubmissions(String username) {
@@ -170,6 +202,10 @@ public class SubmissionService {
     }
 
     private SubmissionResponse toResponse(Submission s, JudgeResult judgeResult) {
+        return toResponse(s, judgeResult, null);
+    }
+
+    private SubmissionResponse toResponse(Submission s, JudgeResult judgeResult, NationResultDto nationResult) {
         return new SubmissionResponse(
                 s.getId(),
                 s.getProblem().getTitle(),
@@ -179,7 +215,8 @@ public class SubmissionService {
                 judgeResult != null ? judgeResult.expectedOutput() : null,
                 judgeResult != null ? judgeResult.actualOutput() : null,
                 judgeResult != null ? judgeResult.failedTestcaseInput() : null,
-                judgeResult != null ? judgeResult.executionMessage() : null);
+                judgeResult != null ? judgeResult.executionMessage() : null,
+                nationResult);
     }
 
     private List<SampleCase> resolveTestCases(Problem problem) {

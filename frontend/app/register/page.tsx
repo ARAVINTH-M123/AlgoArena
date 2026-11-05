@@ -24,11 +24,15 @@ export default function RegisterPage() {
     setError("");
     setIsSubmitting(true);
     try {
-      const { data } = await api.post("/auth/register", {
-        username: username.trim(),
-        email: email.trim(),
-        password
-      });
+      const { data } = await api.post(
+        "/auth/register",
+        {
+          username: username.trim(),
+          email: email.trim(),
+          password
+        },
+        { headers: { Authorization: undefined } }
+      );
       persistAuthState({ token: data.token, username: data.username, role: data.role });
       setToken(data.token);
       router.push("/home");

@@ -39,6 +39,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/nation/me").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/nation/*").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/nation/*/presence/stream").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/cosmetics/catalog").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/problems/**", "/api/contests/**", "/api/leaderboard/**", "/api/users/*").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/api/problems", "/api/contests").hasRole("ADMIN")

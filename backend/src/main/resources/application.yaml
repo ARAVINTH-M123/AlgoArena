@@ -16,6 +16,9 @@ spring:
   sql:
     init:
       mode: never
+  threads:
+    virtual:
+      enabled: true
 
 server:
   port: 8080
@@ -24,3 +27,6 @@ app:
   jwt:
     secret: cHJvYmxlbS1zb2x2aW5nLXBsYXRmb3JtLXNlY3VyZS1qd3Qtc2VjcmV0LWtleS0yMDI2
     expiration-ms: 86400000
+nation:
+  award-enabled: true
+  xp-multiplier: 1

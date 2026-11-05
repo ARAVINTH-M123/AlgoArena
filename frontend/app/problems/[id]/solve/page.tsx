@@ -8,6 +8,10 @@ import CustomTestCases from "@/components/CustomTestCases";
 import RequireAuth from "@/components/RequireAuth";
 import { api, getApiErrorMessage, initApiAuth } from "@/lib/api";
 import BackArrowButton from "@/components/BackArrowButton";
+import NationResultPanel from "@/components/nation/NationResultPanel";
+import RankUpOverlay from "@/components/nation/RankUpOverlay";
+import { getAuthState } from "@/lib/auth";
+import type { NationResultDto } from "@/lib/nation";
 
 type EditorTab = "code" | "result";
 
@@ -27,6 +31,8 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
   const [activeTab, setActiveTab] = useState<EditorTab>("code");
   const [hasResultTab, setHasResultTab] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nationResult, setNationResult] = useState<NationResultDto | null>(null);
+  const [showRankUp, setShowRankUp] = useState(false);
 
   async function handleSubmit() {
     if (isSubmitting) return;
@@ -46,6 +52,9 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
       setActualOutput(data.actualOutput ?? "");
       setFailedTestcaseInput(data.failedTestcaseInput ?? "");
       setExecutionMessage(data.executionMessage ?? "");
+      const nation = (data.nationResult ?? null) as NationResultDto | null;
+      setNationResult(nation);
+      setShowRankUp(Boolean(nation && nation.rankUps.length > 0));
       setHasResultTab(true);
       setActiveTab("result");
     } catch (err) {
@@ -150,6 +159,10 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
                 <pre className="mt-1 max-h-36 overflow-auto rounded-md border border-platform-border p-2 text-xs text-gray-200">{actualOutput || "(empty)"}</pre>
               </div>
             )}
+
+            {verdict === "ACCEPTED" && nationResult && (
+              <NationResultPanel result={nationResult} username={getAuthState()?.username} />
+            )}
           </div>
         </div>
       )}
@@ -177,6 +190,9 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
         rightTopPanel={rightTopPanel}
         rightBottomPanel={rightBottomPanel}
       />
+      {showRankUp && nationResult && (
+        <RankUpOverlay rankUps={nationResult.rankUps} unlocked={nationResult.unlocked} onClose={() => setShowRankUp(false)} />
+      )}
     </RequireAuth>
   );
 }
