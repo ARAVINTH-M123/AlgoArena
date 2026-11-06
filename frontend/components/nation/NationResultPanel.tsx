@@ -6,6 +6,7 @@ import {
   RANK_NAMES,
   STAGE_LABELS,
   TRACK_LABELS,
+  bonusLabelText,
   formatGain,
   itemGlyph,
   paletteFor,
@@ -57,6 +58,17 @@ export default function NationResultPanel({ result, username }: Props) {
         ))}
       </p>
 
+      {result.bonusXp > 0 && (
+        <p className="mt-1 text-xs text-platform-accent" aria-label="Bonus XP">
+          +{formatGain(result.bonusXp)} bonus XP — {result.bonusLabels.map(bonusLabelText).join(" · ")}
+        </p>
+      )}
+      {result.mode === "FIRST" && result.streakDays >= 2 && (
+        <p className="mt-1 text-xs text-gray-300">
+          🔥 {result.streakDays}-day streak · Daily goal {result.dailyGoalSolvedToday}/{result.dailyGoalTarget}
+        </p>
+      )}
+
       {result.itemsCompleted.length > 0 && (
         <ul className="mt-3 space-y-1">
           {result.itemsCompleted.map((item, index) => (
@@ -89,6 +101,13 @@ export default function NationResultPanel({ result, username }: Props) {
       {result.unlocked.length > 0 && (
         <p className="mt-3 text-xs text-gray-200">
           Unlocked: {result.unlocked.map((item) => `${item.name} (${CATEGORY_LABELS[item.category] ?? item.category.toLowerCase()})`).join(", ")}
+        </p>
+      )}
+
+      {result.cacheDropped && (
+        <p className="mt-3 text-xs text-gray-200">
+          A Mystery Cache dropped!{" "}
+          <Link href="/collection" className="text-platform-accent underline">Open it in your collection</Link>.
         </p>
       )}
 

@@ -3,7 +3,7 @@ package com.problemsolving.platform.domain.entity;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
-/** Easy first-solves per nation-local day (drives the daily easy halving). */
+/** First-solves per nation-local day: easy counting for the daily halving, first_solves for the daily goal (Phase 7). */
 @Entity
 @Table(name = "nation_daily_counters", uniqueConstraints = @UniqueConstraint(columnNames = {"nation_id", "local_day"}))
 public class NationDailyCounter {
@@ -20,6 +20,10 @@ public class NationDailyCounter {
 
     @Column(name = "easy_first_solves", nullable = false)
     private int easyFirstSolves = 0;
+
+    /** All first-solves of the day (any difficulty); drives the daily-goal bonus. */
+    @Column(name = "first_solves", nullable = false, columnDefinition = "int default 0")
+    private int firstSolves = 0;
 
     public Long getId() {
         return id;
@@ -47,5 +51,13 @@ public class NationDailyCounter {
 
     public void setEasyFirstSolves(int easyFirstSolves) {
         this.easyFirstSolves = easyFirstSolves;
+    }
+
+    public int getFirstSolves() {
+        return firstSolves;
+    }
+
+    public void setFirstSolves(int firstSolves) {
+        this.firstSolves = firstSolves;
     }
 }

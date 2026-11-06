@@ -30,3 +30,8 @@ app:
 nation:
   award-enabled: true
   xp-multiplier: 1
+  # Phase 7 retention (defaults live in NationProperties; uncomment to override):
+  # daily-goal-solves: 3            # first solves per local day that fill the goal
+  # daily-goal-bonus-percent: 50    # extra XP for each solve while the day is under the goal
+  # comeback-gap-days: 14           # days away that make the next first solve a comeback
+  # comeback-bonus-points: 100      # flat comeback XP in whole points

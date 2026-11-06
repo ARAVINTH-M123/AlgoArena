@@ -9,7 +9,8 @@ import { initApiAuth } from "@/lib/api";
 const userLinks = [
   { href: "/problems", label: "Problem List" },
   { href: "/submissions", label: "Submissions" },
-  { href: "/leaderboard", label: "Leaderboard" }
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/collection", label: "Collection" }
 ];
 
 const adminLinks = [
@@ -31,7 +32,11 @@ export default function Navbar() {
   const hideProfileButton = pathname === "/login" || pathname === "/register" || isAdminLoginPage || isLandingPage;
   const showAppMenu = pathname !== "/" && pathname !== "/login" && pathname !== "/register" && !isAdminLoginPage;
   const links = isAdminRoute ? adminLinks : userLinks;
-  const profileHref = role === "ADMIN" ? "/admin/profile" : "/profile";
+  const profileHref = role === "ADMIN"
+    ? "/admin/profile"
+    : username
+      ? `/profile/${encodeURIComponent(username)}`
+      : "/profile";
 
   const isLinkActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 

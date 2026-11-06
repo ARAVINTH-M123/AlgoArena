@@ -1,6 +1,6 @@
 # Nation system progress
 
-Last updated: 2026-10-30 by Claude (Phase 5A delivered)
+Last updated: 2026-11-06 by CIEL (Phase 5B + Phase 6 + Phase 7 delivered)
 Branch: feature/nation
 
 ## Checklist
@@ -17,9 +17,10 @@ Branch: feature/nation
 - [x] Phase 4: Feedback and polish (result panel, rank-up overlay, nation rank on the leaderboard, README section)
 - [ ] Phase 5: Cosmetics
   - [x] 5A: ownership + equip API, 10 Monaco editor themes, 10 nation frames, pickers, unlock messages
-  - [ ] 5B: flags (pattern/colors/emblem by rank), anthems (Web Audio), equip for both
-- [ ] Phase 6: Mystery Caches
-- [ ] Phase 7: Extra XP and retention
+  - [x] 5B: flags (7 patterns, 12 colors, 10 emblems by rank, FlagEditor, waving flagpole), 10 generated Web Audio anthems (AnthemPlayer + seeded scheduler), equip for ANTHEM + the flag via PUT /api/nation/me/profile
+  - Verified in the delivery sandbox: backend clean verify 83/83 (Maven 3.9.9 + Temurin JDK 21), frontend tsc + next build green, 59/59 catalog keys in sync both sides, all 10 anthems deterministic (seeded PRNG) and clip-free, 12 Monaco/scene files type-checked
+- [x] Phase 6: Mystery Caches (3/6/12% drops by difficulty, 40-solve pity, 70/22/7/1 open odds, every-10th >= Rare, duplicates -> shards (10/30/100/300), crafting 40/120/400/1200, nation_cosmetic_owned + cache_open_log tables, SKY/AURA/AMBIENT scene cosmetics, the Ascended Aura on Teleport-Gate completion, CacheReveal + /collection page with visible odds)
+- [x] Phase 7: Extra XP and retention (daily goal 3 solves -> +50% XP each, streak with 3/7/14/30/60/100-day milestones, 14-day comeback bonus, lifetime solve milestones 10..1000, RetentionStrip + bonus lines in the result panel)
 
 ## Decisions and deviations from the blueprint
 - Item catalog lives in code (NationCatalog), not in a nation_item_catalog table; completed items store catalog_key. Same behavior, fewer moving parts.
@@ -63,4 +64,37 @@ Branch: feature/nation
 - Gradients use plain one-position color stops on purpose (the two-position shorthand is not supported everywhere).
 - The editor falls back to the built-in vs-dark theme while the equipped theme loads or if it cannot be loaded.
 - Not done yet: the Singularity "Ascended" Legendary cosmetic (granted when the Teleport Gate completes) and cosmetics from caches/shards: Phase 6.
-- Next: Phase 5B (flags and anthems).
+- Phase 5B notes:
+  - Flag validation order: every field is validated BEFORE anything is applied (name, zone, flag, appear-offline); a bad color reports "Unknown flag color" even when the color count is also wrong, and the 2-3 color count is checked AFTER deduping (a repeated color is one color).
+  - Flags: pattern + 2-3 colors + optional emblem stored on the nation row (flag_pattern, flag_colors comma-separated, flag_emblem - all nullable; null pattern = never customized = default flag of the rank). A rank-up unlocks exactly four cosmetics now: theme, border, anthem, emblem. Flag patterns/colors are owned by everyone from rank 0.
+  - Anthems: fully generated in the browser (no audio files). lib/anthems.ts holds 10 seeded songs (pure buildEvents, seeded PRNG per key -> same events every time); lib/anthemPlayer.ts is a lookahead scheduler (250 ms poll, 2 s queue, ADSR gains, DynamicsCompressor, MASTER_LEVEL 0.3, 0.15 s/0.3 s fades, AudioContext created only inside play(), closed after fade-out). Mute state in localStorage key "anthemMuted"; never auto-plays.
+  - Equip: ANTHEM joins THEME/BORDER in POST /api/cosmetics/equip ("auto" resets to the rank's anthem). The flag is NOT equipped via /equip: it is changed through PUT /api/nation/me/profile { flag: { pattern, colors, emblem } } so the same validate-before-apply rules apply.
+  - NationDto now carries themeKey/borderKey/anthemKey + flag; CosmeticsDto carries anthemKey/pinnedAnthemKey + flag; new columns are all nullable (no migration risk for existing rows).
+  - Frontend: lib/flags.ts (pattern geometry, 12 color hexes, 10 emblem glyph paths), lib/anthems.ts, lib/anthemPlayer.ts, Flag.tsx (waving flagpole, reduced-motion aware), FlagEditor.tsx, AnthemPlayer.tsx, useAnthem.ts. CosmeticPicker handles the flag parts.
+  - Not verifiable in the sandbox: how the anthems actually sound, real browser playback, the live PostgreSQL ALTER TABLE (columns are nullable, so risk is minimal).
+- Phase 6 notes:
+  - All randomness comes from one injected java.util.Random (production: unseeded; tests: ScriptedRandom replays scripted doubles/ints), so every drop, rarity roll and pool pick is deterministic in tests.
+  - Drop rolls happen ONLY on FIRST solves, inside the award transaction (re-solves and award-disabled deployments never roll); the 40-solve pity counts first-solves since the last DROP (caches can pile up unopened).
+  - Rarity pity: the 10th open without a Rare-or-better is forced into the Rare-or-better space with renormalized weights (0..21 RARE, 22..28 EPIC, 29 LEGENDARY); the counter resets on any Rare or better.
+  - Pool picks prefer UNOWNED items of the rolled rarity (collections fill up); only an exhausted rarity band can produce a duplicate, which converts to shards (10/30/100/300 = a quarter of the craft cost 40/120/400/1200).
+  - Crafting targets a SPECIFIC unowned cache-pool key; insufficient shards, unknown keys, non-pool keys (rank cosmetics) and owned keys are rejected with clear messages.
+  - Ownership: rank cosmetics stay DERIVED from the rank (no back-fill); cache/shard/special cosmetics are rows in nation_cosmetic_owned (unique user_id + cosmetic_key, acquired_via CACHE|SHARDS|SPECIAL). CosmeticSource gained SPECIAL for the Ascended Aura, granted idempotently when the Teleport Gate completes at Singularity (the false->true flip of nations.ascended).
+  - New nation columns: unopened_caches, solves_since_cache, opens_since_rare (int default 0), shards (bigint default 0) - all with DB defaults, so ddl-auto=update migrates existing rows safely; equipped_sky_key / equipped_aura_key / equipped_ambient_key are nullable.
+  - SKY/AURA/AMBIENT have NO rank default: nothing equipped means the rank's plain look; "auto" resets to none. CosmeticService.effectiveKey gained an ownedKeys overload; the 2-arg version still works for rank categories.
+  - API: GET /api/cosmetics/caches (state + exact odds, login), POST /api/cosmetics/caches/open (reveal, login), POST /api/craft { key } (login). NationDto carries skyKey/auraKey/ambientKey; CosmeticsDto carries them plus their pinned keys; NationResultDto gained cacheDropped (result panel links to /collection).
+  - Frontend: app/collection/page.tsx (unopened caches, shards, both pity bars, visible odds, craft grid by rarity, equip from the page), components/nation/CacheReveal.tsx (rarity-colored reveal card, duplicate -> shards messaging, open-next), Navbar gained Collection; CosmeticPicker gained SKY/AURA/AMBIENT sections with previews and "From caches or crafting" for locked pool items; NationScene applies cache skies and ambient motes (deterministic positions, reduced-motion aware); PresenceFigure draws the equipped aura ring (pulsing for animated looks, double ring for the Ascended Aura).
+  - Catalog is now 72 items: 40 rank + 7 patterns + 12 colors + 12 cache pool + 1 Ascended Aura; key-sync check confirms all 72 keys exist on both sides.
+  - Verified in the delivery sandbox: backend clean verify 102/102 (Maven 3.9.9 + Temurin JDK 21; 83 -> 102 with CacheServiceTest 15 + CosmeticServiceTest +3 + NationServiceTest +1), frontend tsc + next build green (/collection prerendered), 72/72 key sync, mutation check: breaking the HARD drop rate was caught by the tests.
+  - Not verifiable in the sandbox: live PostgreSQL migration (new columns have defaults; risk minimal), real browser feel of the reveal animation.
+- Phase 7 notes (Extra XP and retention):
+  - All four retention features live in the ONE award transaction of NationService.awardForAcceptedSolve and only touch FIRST solves: the daily goal (+50% XP for each of the first 3 first-solves of the nation-local day), the streak (consecutive local days with >= 1 first-solve; milestone bonuses at 3/7/14/30/60/100 days), the comeback (first solve after >= 14 days away: flat +100 points) and lifetime solve milestones (10/25/50/100/250/500/1000 first-solves: one-time flat bonuses). Re-solves and award-disabled deployments never touch any of it.
+  - Bonuses are XP-ONLY: track points (the building pace of the city) are unchanged, so item/rank pacing stays exactly as in Phases 1-6. Everything is multiplied by nation.xp-multiplier like the base XP, and the daily-goal bonus is a percent of the actually awarded XP (it respects the daily easy halving).
+  - Streak milestones are per cycle: when the streak breaks, last_streak_milestone resets to 0 and the milestones can be earned again on the way back up (that is the retention point). Lifetime milestones are strictly once: last_lifetime_milestone never resets, and nations that existed before Phase 7 catch up (all crossed milestones granted at once, summed) on their next first-solve.
+  - Streak bookkeeping keys off recordActiveDay's "newly added" return, so a second solve on the same day never grows the streak. The comeback compares local dates in the nation's CURRENT zone (a zone change mid-absence shifts the gap slightly; same accepted class of edge case as the daily halving).
+  - New nation columns (Hibernate adds them automatically; all safe for existing rows): streak_days / best_streak_days / last_streak_milestone / last_lifetime_milestone (int default 0) and last_streak_day (nullable date). nation_daily_counters gained first_solves (int default 0); it is now created for every first-solve (not only easies).
+  - API: NationResultDto gained bonusXp (already included in xpGained), bonusLabels (DAILY_GOAL, STREAK_MILESTONE_n, COMEBACK, LIFETIME_MILESTONE_n), streakDays, dailyGoalSolvedToday, dailyGoalTarget; NationDto gained retention { streakDays, bestStreakDays, solvesToday, dailyGoalTarget } (visitors see it too - streaks are public like the solve counters). NationStore gained a read-only findDailyCounter.
+  - Frontend: lib/nation.ts gained RetentionDto + bonusLabelText (STREAK_MILESTONE_7 -> "7-day streak bonus"); NationResultPanel shows the bonus line and the streak/goal line; new RetentionStrip component (flame streak, best, goal progress bar) sits under the XP bar on the profile.
+  - Config: nation.daily-goal-solves / daily-goal-bonus-percent / comeback-gap-days / comeback-bonus-points are yaml-overridable scalars; the milestone tables are defaults inside NationProperties (same pattern as the rank/XP tables).
+  - Verified in the delivery sandbox: backend clean verify 111/111 (was 102; NationServiceTest +7 retention tests, NationProfileServiceTest +2), frontend tsc + next build green. Tests were updated where the default +50% goal bonus and the milestone bonuses shift XP expectations (first-solve tests, rank-up threshold tests now 11 hard solves instead of 12/13, 45-day profile test).
+  - Not verifiable in the sandbox: live PostgreSQL migration (all new columns have defaults or are nullable; risk minimal), real browser feel of the strip and the reveal lines.
+- Next: Phase 8 (open - no blueprint line yet).

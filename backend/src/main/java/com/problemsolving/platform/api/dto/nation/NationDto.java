@@ -1,5 +1,6 @@
 package com.problemsolving.platform.api.dto.nation;
 
+import com.problemsolving.platform.api.dto.cosmetics.FlagDto;
 import com.problemsolving.platform.api.dto.presence.PresenceDto;
 
 import java.util.List;
@@ -26,9 +27,18 @@ public record NationDto(
         String timeZoneChangeAvailableAt,
         PresenceDto presence,
         boolean appearOffline,
-        /** The editor theme and frame in effect for this nation (see /api/cosmetics). */
+        /** The editor theme, frame and anthem in effect for this nation (see /api/cosmetics). */
         String themeKey,
-        String borderKey) {
+        String borderKey,
+        String anthemKey,
+        /** Scene cosmetics in effect (Phase 6); null when the nation uses the rank's default look. */
+        String skyKey,
+        String auraKey,
+        String ambientKey,
+        /** The flag in effect (never null: nations without a custom flag get the default one for their rank). */
+        FlagDto flag,
+        /** Streak and daily-goal progress (Phase 7); zeros for users without a nation yet. */
+        Retention retention) {
 
     /** What is still needed to reach the next rank; null when the nation is at the top rank. */
     public record NextRank(String name, long xpRequired, int percentToNext, List<Requirement> requirements) {
@@ -39,6 +49,10 @@ public record NationDto(
     }
 
     public record Solves(int easy, int medium, int hard, long activeDays) {
+    }
+
+    /** Phase 7 retention snapshot: the streak and how far today's daily goal has come. */
+    public record Retention(int streakDays, int bestStreakDays, int solvesToday, int dailyGoalTarget) {
     }
 
     public record CompletedItemDto(String track, String key, String name, int era, int sequenceNumber, int instance) {

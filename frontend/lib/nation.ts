@@ -1,6 +1,7 @@
 // Nation system: shared types, formatting helpers, rank palettes and the deterministic city layout.
 // Point values coming from the API are micro-points (1 point = 1,000,000); the UI shows whole points.
 
+import type { FlagDto } from "@/lib/cosmetics";
 import type { PresenceDto } from "@/lib/presence";
 
 export type TrackName = "BASICS" | "STRUCTURES" | "LANDMARKS";
@@ -57,15 +58,42 @@ export type NationDto = {
   presence: PresenceDto;
   /** True only for the owner while "Appear offline" is on (visitors always get false). */
   appearOffline: boolean;
-  /** Editor theme and frame in effect for this nation (see lib/cosmetics.ts). */
+  /** Editor theme, frame and anthem in effect for this nation (see lib/cosmetics.ts). */
   themeKey: string;
   borderKey: string;
+  anthemKey: string;
+  /** Scene cosmetics in effect (Phase 6); null when the nation uses the rank's default look. */
+  skyKey: string | null;
+  auraKey: string | null;
+  ambientKey: string | null;
+  /** The flag in effect (never null: nations without a custom flag get the default one for their rank). */
+  flag: FlagDto;
+  /** Streak and daily-goal progress (Phase 7); zeros for users without a nation yet. */
+  retention: RetentionDto;
+};
+
+/** Phase 7 retention snapshot shown on the profile and in the solve result. */
+export type RetentionDto = {
+  streakDays: number;
+  bestStreakDays: number;
+  /** First-solves of the nation's current local day. */
+  solvesToday: number;
+  /** How many first-solves per day the daily goal asks for. */
+  dailyGoalTarget: number;
 };
 
 export type UpdateNationProfilePayload = {
   name?: string;
   timeZone?: string;
   appearOffline?: boolean;
+  flag?: FlagPayload;
+};
+
+/** Flag change; emblem omitted (or null) removes the emblem. */
+export type FlagPayload = {
+  pattern: string;
+  colors: string[];
+  emblem?: string | null;
 };
 
 // ------------------------------------------------------------------ formatting
@@ -236,4 +264,33 @@ export type NationResultDto = {
   tracks: TrackProgressDto[];
   /** Cosmetics that became available through the rank-up(s) of this solve. */
   unlocked: { category: string; key: string; name: string }[];
+  /** True when this first-solve also dropped a Mystery Cache (open it on the collection page). */
+  cacheDropped: boolean;
+  /** Extra XP from the Phase 7 retention features, ALREADY INCLUDED in xpGained. */
+  bonusXp: number;
+  /** Why bonusXp was granted (DAILY_GOAL, STREAK_MILESTONE_n, COMEBACK, LIFETIME_MILESTONE_n). */
+  bonusLabels: string[];
+  /** The nation's streak after this solve (FIRST solves only; 0 otherwise). */
+  streakDays: number;
+  /** First-solves of the nation-local day including this one (FIRST solves only). */
+  dailyGoalSolvedToday: number;
+  /** How many first-solves per day the daily goal asks for. */
+  dailyGoalTarget: number;
 };
+
+// ------------------------------------------------------------------ Phase 7 bonus labels
+
+const BONUS_LABEL_TEXT: Record<string, string> = {
+  DAILY_GOAL: "Daily goal bonus",
+  COMEBACK: "Welcome-back bonus"
+};
+
+/**
+ * Friendly text for a bonus label. Milestone labels carry their value
+ * (STREAK_MILESTONE_7, LIFETIME_MILESTONE_100); unknown labels are humanized as a fallback.
+ */
+export function bonusLabelText(label: string): string {
+  if (label.startsWith("STREAK_MILESTONE_")) return `${label.slice("STREAK_MILESTONE_".length)}-day streak bonus`;
+  if (label.startsWith("LIFETIME_MILESTONE_")) return `${label.slice("LIFETIME_MILESTONE_".length)}-solve milestone`;
+  return BONUS_LABEL_TEXT[label] ?? label.charAt(0) + label.slice(1).toLowerCase().replace(/_/g, " ");
+}

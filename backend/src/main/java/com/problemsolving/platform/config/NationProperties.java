@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
  * Switches (award-enabled, xp-multiplier, ...) can be overridden under the "nation" prefix in
  * application.yaml. Tables are written in WHOLE points and converted to micro-points on read
  * (1 point = 1,000,000 micro-points) so halving and tiny bonuses stay exact.
+ * Phase 7 (retention) adds the daily-goal / streak / comeback switches and the milestone tables.
  */
 @Component
 @ConfigurationProperties(prefix = "nation")
@@ -30,6 +31,16 @@ public class NationProperties {
     private int renameCooldownDays = 7;
     private int timeZoneChangeCooldownDays = 30;
     private long singularityTierSpacingPoints = 5_000;
+
+    // ---------- retention (Phase 7: extra XP and retention) ----------
+    /** How many first-solves per nation-local day count as the daily goal. */
+    private int dailyGoalSolves = 3;
+    /** Extra XP (percent of the awarded XP) for each first solve while the day is still under the goal. */
+    private int dailyGoalBonusPercent = 50;
+    /** First solve after this many days without any first-solve counts as a comeback. */
+    private int comebackGapDays = 14;
+    /** Flat comeback XP, in whole points. */
+    private long comebackBonusPoints = 100;
 
     // ---------- presence (blueprint section 8) ----------
     /** A session counts as live while its last heartbeat is younger than this. */
@@ -68,6 +79,14 @@ public class NationProperties {
             {120, 220, 350},
             {180, 320, 550},
             {250, 450, 800}};
+
+    // Phase 7 retention tables (whole points). Streak milestones are per streak cycle: a reset lets the
+    // nation earn them again on the way back up (that is the retention point). Lifetime milestones are
+    // granted exactly once - nations older than Phase 7 catch up on their next first-solve.
+    private static final int[] STREAK_MILESTONES = {3, 7, 14, 30, 60, 100};
+    private static final long[] STREAK_MILESTONE_BONUS_POINTS = {30, 80, 200, 500, 1_200, 3_000};
+    private static final int[] LIFETIME_MILESTONES = {10, 25, 50, 100, 250, 500, 1_000};
+    private static final long[] LIFETIME_MILESTONE_BONUS_POINTS = {50, 120, 250, 600, 1_500, 4_000, 10_000};
 
     /** Starter list for nation-name moderation; extend as needed. Matched against the name with punctuation removed. */
     private static final String[] BLOCKED_NAME_WORDS = {
@@ -118,6 +137,32 @@ public class NationProperties {
 
     public long singularityTierSpacingMicro() {
         return singularityTierSpacingPoints * MICRO;
+    }
+
+    // ---------- retention lookups (Phase 7) ----------
+    /** Streak milestone values, ascending. */
+    public int[] streakMilestones() {
+        return STREAK_MILESTONES.clone();
+    }
+
+    /** XP (micro-points) of the streak milestone at the given table index. */
+    public long streakMilestoneBonusMicro(int index) {
+        return STREAK_MILESTONE_BONUS_POINTS[index] * MICRO;
+    }
+
+    /** Lifetime first-solve milestone values, ascending. */
+    public int[] lifetimeMilestones() {
+        return LIFETIME_MILESTONES.clone();
+    }
+
+    /** XP (micro-points) of the lifetime milestone at the given table index. */
+    public long lifetimeMilestoneBonusMicro(int index) {
+        return LIFETIME_MILESTONE_BONUS_POINTS[index] * MICRO;
+    }
+
+    /** Comeback XP in micro-points. */
+    public long comebackBonusMicro() {
+        return comebackBonusPoints * MICRO;
     }
 
     // ---------- getters / setters for the switches ----------
@@ -191,6 +236,38 @@ public class NationProperties {
 
     public void setSingularityTierSpacingPoints(long singularityTierSpacingPoints) {
         this.singularityTierSpacingPoints = singularityTierSpacingPoints;
+    }
+
+    public int getDailyGoalSolves() {
+        return dailyGoalSolves;
+    }
+
+    public void setDailyGoalSolves(int dailyGoalSolves) {
+        this.dailyGoalSolves = dailyGoalSolves;
+    }
+
+    public int getDailyGoalBonusPercent() {
+        return dailyGoalBonusPercent;
+    }
+
+    public void setDailyGoalBonusPercent(int dailyGoalBonusPercent) {
+        this.dailyGoalBonusPercent = dailyGoalBonusPercent;
+    }
+
+    public int getComebackGapDays() {
+        return comebackGapDays;
+    }
+
+    public void setComebackGapDays(int comebackGapDays) {
+        this.comebackGapDays = comebackGapDays;
+    }
+
+    public long getComebackBonusPoints() {
+        return comebackBonusPoints;
+    }
+
+    public void setComebackBonusPoints(long comebackBonusPoints) {
+        this.comebackBonusPoints = comebackBonusPoints;
     }
 
     public int getPresenceHeartbeatTtlSeconds() {

@@ -19,7 +19,19 @@ public record NationResultDto(
         long nationXp,
         List<TrackProgress> tracks,
         String reason,
-        List<UnlockedCosmetic> unlocked) {
+        List<UnlockedCosmetic> unlocked,
+        /** True when this first-solve also dropped a Mystery Cache (open it on the collection page). */
+        boolean cacheDropped,
+        /** Extra XP granted by the Phase 7 retention features, ALREADY INCLUDED in xpGained. */
+        long bonusXp,
+        /** Why bonusXp was granted: DAILY_GOAL, STREAK_MILESTONE_n, COMEBACK, LIFETIME_MILESTONE_n. */
+        List<String> bonusLabels,
+        /** The nation's streak after this solve (FIRST solves only; 0 otherwise). */
+        int streakDays,
+        /** First-solves of the nation-local day INCLUDING this one (FIRST solves only). */
+        int dailyGoalSolvedToday,
+        /** How many first-solves per day the daily goal asks for. */
+        int dailyGoalTarget) {
 
     /** A cosmetic that became available through a rank-up of this solve. */
     public record UnlockedCosmetic(String category, String key, String name) {
@@ -37,6 +49,7 @@ public record NationResultDto(
     public static final String REASON_ALREADY_COUNTED = "ALREADY_COUNTED";
 
     public static NationResultDto noOp(String reason) {
-        return new NationResultDto("NO_OP", 0L, 0L, 0L, 0L, List.of(), List.of(), null, 0, 0L, List.of(), reason, List.of());
+        return new NationResultDto("NO_OP", 0L, 0L, 0L, 0L, List.of(), List.of(), null, 0, 0L, List.of(), reason,
+                List.of(), false, 0L, List.of(), 0, 0, 0);
     }
 }

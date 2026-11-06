@@ -1,7 +1,10 @@
 package com.problemsolving.platform.service.nation;
 
+import com.problemsolving.platform.domain.entity.CacheOpenLog;
 import com.problemsolving.platform.domain.entity.Nation;
+import com.problemsolving.platform.domain.entity.NationActiveDay;
 import com.problemsolving.platform.domain.entity.NationCompletedItem;
+import com.problemsolving.platform.domain.entity.NationCosmeticOwned;
 import com.problemsolving.platform.domain.entity.NationDailyCounter;
 import com.problemsolving.platform.domain.entity.NationProblemAward;
 import com.problemsolving.platform.domain.entity.NationRankEvent;
@@ -34,6 +37,9 @@ public interface NationStore {
 
     NationDailyCounter saveDailyCounter(NationDailyCounter counter);
 
+    /** Read-only lookup of a day's counter (used for the daily-goal progress); never creates a row. */
+    Optional<NationDailyCounter> findDailyCounter(Long nationId, LocalDate day);
+
     /** Records an active day; returns true only when the day was newly added. */
     boolean recordActiveDay(Long nationId, LocalDate day);
 
@@ -48,6 +54,17 @@ public interface NationStore {
     NationCompletedItem saveCompletedItem(NationCompletedItem item);
 
     NationRankEvent saveRankEvent(NationRankEvent event);
+
+    // ---------------- acquired cosmetics (Phase 6: caches, shards, special grants) ----------------
+
+    /** Every acquired cosmetic of the user (rank cosmetics are NOT here - they stay derived from the rank). */
+    List<NationCosmeticOwned> findOwnedCosmetics(Long userId);
+
+    boolean ownsCosmetic(Long userId, String cosmeticKey);
+
+    NationCosmeticOwned saveOwnedCosmetic(NationCosmeticOwned owned);
+
+    CacheOpenLog saveCacheOpenLog(CacheOpenLog log);
 
     // ---------------- read side (no locking, never creates rows) ----------------
 

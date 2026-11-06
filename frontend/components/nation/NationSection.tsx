@@ -7,12 +7,15 @@ import type { PresenceDto } from "@/lib/presence";
 import { presenceLabel } from "@/lib/presence";
 import { usePresenceStream } from "@/hooks/usePresenceStream";
 import { usePresenceView } from "@/hooks/usePresenceView";
+import AnthemPlayer from "@/components/nation/AnthemPlayer";
 import CosmeticPicker from "@/components/nation/CosmeticPicker";
+import FlagEditor from "@/components/nation/FlagEditor";
 import NationScene from "@/components/nation/NationScene";
 import NationSettings from "@/components/nation/NationSettings";
 import PresenceStatusLine from "@/components/nation/PresenceStatusLine";
 import RankBadge from "@/components/nation/RankBadge";
 import RankRequirements from "@/components/nation/RankRequirements";
+import RetentionStrip from "@/components/nation/RetentionStrip";
 import TrackProgress from "@/components/nation/TrackProgress";
 import XpBar from "@/components/nation/XpBar";
 
@@ -97,13 +100,18 @@ function NationBody({ initial }: { initial: NationDto }) {
     <section className="panel space-y-5" aria-label="Nation">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-platform-accent">Nation</h2>
-        <RankBadge name={nation.name} rankName={nation.rankName} rankIndex={nation.rankIndex} tier={nation.tier} />
+        <div className="flex flex-wrap items-center gap-2">
+          <RankBadge name={nation.name} rankName={nation.rankName} rankIndex={nation.rankIndex} tier={nation.tier} flag={nation.flag} />
+          <AnthemPlayer anthemKey={nation.anthemKey} />
+        </div>
       </div>
 
       <NationScene nation={nation} presence={view} lastActiveText={lastActiveText} />
       <PresenceStatusLine presence={view} nowMs={nowMs} hiddenFromVisitors={nation.owner && nation.appearOffline} />
 
       <XpBar nation={nation} />
+
+      <RetentionStrip nation={nation} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <RankRequirements nation={nation} />
@@ -119,9 +127,17 @@ function NationBody({ initial }: { initial: NationDto }) {
       </dl>
 
       {nation.owner && <NationSettings nation={nation} onUpdated={setNation} />}
+      {nation.owner && <FlagEditor nation={nation} onUpdated={setNation} />}
       {nation.owner && (
         <CosmeticPicker
-          onChanged={(cosmetics) => setNation((current) => ({ ...current, themeKey: cosmetics.themeKey, borderKey: cosmetics.borderKey }))}
+          onChanged={(cosmetics) =>
+            setNation((current) => ({
+              ...current,
+              themeKey: cosmetics.themeKey,
+              borderKey: cosmetics.borderKey,
+              anthemKey: cosmetics.anthemKey
+            }))
+          }
         />
       )}
     </section>

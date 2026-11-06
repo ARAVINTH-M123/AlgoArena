@@ -1,6 +1,12 @@
 import axios from "axios";
 import { clearAuthState, getAuthState } from "@/lib/auth";
-import type { CosmeticsDto, EquippableCategory } from "@/lib/cosmetics";
+import type {
+  CacheOpenResultDto,
+  CacheStateDto,
+  CraftResultDto,
+  CosmeticsDto,
+  EquippableCategory
+} from "@/lib/cosmetics";
 import type { NationDto, UpdateNationProfilePayload } from "@/lib/nation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
@@ -131,9 +137,30 @@ export async function getMyCosmetics(): Promise<CosmeticsDto> {
   return response.data;
 }
 
-/** key null (or "auto") goes back to the automatic cosmetic of the current rank. */
+/** key null (or "auto") goes back to the automatic cosmetic of the current rank (or none for scene cosmetics). */
 export async function equipCosmetic(category: EquippableCategory, key: string | null): Promise<CosmeticsDto> {
   initApiAuth();
   const response = await api.post<CosmeticsDto>("/cosmetics/equip", { category, key });
+  return response.data;
+}
+
+/** Cache and shard state plus the exact odds (login). */
+export async function getCacheState(): Promise<CacheStateDto> {
+  initApiAuth();
+  const response = await api.get<CacheStateDto>("/cosmetics/caches");
+  return response.data;
+}
+
+/** Opens one Mystery Cache and reveals what it contained. */
+export async function openCache(): Promise<CacheOpenResultDto> {
+  initApiAuth();
+  const response = await api.post<CacheOpenResultDto>("/cosmetics/caches/open");
+  return response.data;
+}
+
+/** Crafts one cache-pool cosmetic for shards. */
+export async function craftCosmetic(key: string): Promise<CraftResultDto> {
+  initApiAuth();
+  const response = await api.post<CraftResultDto>("/cosmetics/craft", { key });
   return response.data;
 }

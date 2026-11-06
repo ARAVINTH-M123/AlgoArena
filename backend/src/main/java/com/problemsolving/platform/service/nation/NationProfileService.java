@@ -3,9 +3,13 @@ package com.problemsolving.platform.service.nation;
 import com.problemsolving.platform.api.dto.nation.NationDto;
 import com.problemsolving.platform.api.dto.nation.NationResultDto;
 import com.problemsolving.platform.api.dto.nation.UpdateNationProfileRequest;
+import com.problemsolving.platform.api.dto.cosmetics.FlagDto;
+import com.problemsolving.platform.api.dto.cosmetics.FlagRequest;
 import com.problemsolving.platform.config.NationProperties;
 import com.problemsolving.platform.domain.entity.Nation;
 import com.problemsolving.platform.domain.entity.NationCompletedItem;
+import com.problemsolving.platform.domain.entity.NationCosmeticOwned;
+import com.problemsolving.platform.domain.entity.NationDailyCounter;
 import com.problemsolving.platform.domain.entity.NationTrackState;
 import com.problemsolving.platform.domain.enums.CosmeticCategory;
 import com.problemsolving.platform.domain.enums.NationTrack;
@@ -16,9 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Set;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,6 +92,14 @@ public class NationProfileService {
                 newZone = zone;
             }
         }
+        // the flag is validated here too: a bad flag must not change the name, the zone or anything else
+        FlagDto newFlag = null;
+        if (request.getFlag() != null) {
+            FlagDto candidate = CosmeticService.validateFlag(nation.getRankIndex(), request.getFlag());
+            if (!candidate.equals(CosmeticService.flagOf(nation))) {
+                newFlag = candidate;
+            }
+        }
 
         if (newName != null) {
             nation.setName(newName);
@@ -96,11 +111,16 @@ public class NationProfileService {
         }
         Boolean requestedAppear = request.getAppearOffline();
         boolean appearChanged = requestedAppear != null && requestedAppear != nation.isAppearOffline();
+        if (newFlag != null) {
+            nation.setFlagPattern(newFlag.pattern());
+            nation.setFlagColors(String.join(",", newFlag.colors()));
+            nation.setFlagEmblem(newFlag.emblem());
+        }
         if (appearChanged) {
             nation.setAppearOffline(requestedAppear);
         }
 
-        if (newName != null || newZone != null || appearChanged) {
+        if (newName != null || newZone != null || newFlag != null || appearChanged) {
             nation.setUpdatedAt(now);
             store.saveNation(nation);
         }
@@ -193,6 +213,10 @@ public class NationProfileService {
             zoneAvailableAt = availableAt(nation.getLastTimeZoneChangeAt(), props.getTimeZoneChangeCooldownDays(), now);
         }
 
+        Set<String> ownedKeys = store.findOwnedCosmetics(userId).stream()
+                .map(NationCosmeticOwned::getCosmeticKey)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
         return new NationDto(
                 username,
                 nation == null ? username + "'s Land" : nation.getName(),
@@ -212,8 +236,35 @@ public class NationProfileService {
                 zoneAvailableAt,
                 presence.forViewer(userId, nation, owner, now),
                 owner && nation != null && nation.isAppearOffline(),
-                CosmeticService.effectiveKey(nation, CosmeticCategory.THEME),
-                CosmeticService.effectiveKey(nation, CosmeticCategory.BORDER));
+                CosmeticService.effectiveKey(nation, CosmeticCategory.THEME, ownedKeys),
+                CosmeticService.effectiveKey(nation, CosmeticCategory.BORDER, ownedKeys),
+                CosmeticService.effectiveKey(nation, CosmeticCategory.ANTHEM, ownedKeys),
+                CosmeticService.effectiveKey(nation, CosmeticCategory.SKY, ownedKeys),
+                CosmeticService.effectiveKey(nation, CosmeticCategory.AURA, ownedKeys),
+                CosmeticService.effectiveKey(nation, CosmeticCategory.AMBIENT, ownedKeys),
+                CosmeticService.flagOf(nation),
+                retention(nation, now));
+    }
+
+    /** Phase 7 retention snapshot: the streak and today's daily-goal progress (zeros without a nation). */
+    private NationDto.Retention retention(Nation nation, Instant now) {
+        if (nation == null) {
+            return new NationDto.Retention(0, 0, 0, props.getDailyGoalSolves());
+        }
+        LocalDate today = now.atZone(zoneOf(nation)).toLocalDate();
+        int solvesToday = store.findDailyCounter(nation.getId(), today)
+                .map(NationDailyCounter::getFirstSolves)
+                .orElse(0);
+        return new NationDto.Retention(
+                nation.getStreakDays(), nation.getBestStreakDays(), solvesToday, props.getDailyGoalSolves());
+    }
+
+    private static ZoneId zoneOf(Nation nation) {
+        try {
+            return ZoneId.of(nation.getTimeZone());
+        } catch (DateTimeException | NullPointerException ex) {
+            return ZoneId.of("UTC");
+        }
     }
 
     private NationDto.NextRank nextRank(int rank, long xp, int mediums, int hards, long activeDays, boolean gateDone) {

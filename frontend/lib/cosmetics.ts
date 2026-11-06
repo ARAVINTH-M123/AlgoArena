@@ -1,6 +1,7 @@
-// Cosmetics (visual only): types and the look of every theme and frame. Keys match the backend catalog.
+// Cosmetics (visual only): types and the look of every theme, frame, anthem and scene cosmetic.
+// Keys match the backend catalog.
 
-export type EquippableCategory = "THEME" | "BORDER";
+export type EquippableCategory = "THEME" | "BORDER" | "ANTHEM" | "SKY" | "AURA" | "AMBIENT";
 
 export type CosmeticItemDto = {
   key: string;
@@ -20,7 +21,25 @@ export type CosmeticsDto = {
   /** What the owner chose; null = automatic (follows the current rank). */
   pinnedThemeKey: string | null;
   pinnedBorderKey: string | null;
+  anthemKey: string;
+  pinnedAnthemKey: string | null;
+  /** Scene cosmetics (Phase 6): null = none (the rank's plain look). They come from caches or crafting. */
+  skyKey: string | null;
+  pinnedSkyKey: string | null;
+  auraKey: string | null;
+  pinnedAuraKey: string | null;
+  ambientKey: string | null;
+  pinnedAmbientKey: string | null;
+  /** The nation's flag in effect (never null: the default flag of the current rank). */
+  flag: FlagDto;
   items: CosmeticItemDto[];
+};
+
+/** A flag: cosmetic catalog keys. emblem is null when the owner chose no emblem. */
+export type FlagDto = {
+  pattern: string;
+  colors: string[];
+  emblem: string | null;
 };
 
 // ------------------------------------------------------------------ editor themes (blueprint 9.1)
@@ -89,5 +108,126 @@ export function borderStyleFor(key: string | null | undefined): BorderStyle {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   THEME: "editor theme",
-  BORDER: "nation frame"
+  BORDER: "nation frame",
+  ANTHEM: "anthem",
+  FLAG_PATTERN: "flag pattern",
+  FLAG_COLOR: "flag color",
+  FLAG_EMBLEM: "flag emblem",
+  SKY: "sky",
+  AURA: "aura",
+  AMBIENT: "ambient"
+};
+
+// ------------------------------------------------------------------ anthem titles (keys match the backend)
+
+export const ANTHEM_TITLES: Record<string, string> = {
+  "anthem.soft-pulse": "Soft Pulse",
+  "anthem.campfire": "Campfire",
+  "anthem.chiptune": "Chiptune",
+  "anthem.folk": "Folk Hymn",
+  "anthem.march": "Slow March",
+  "anthem.industrial": "Industrial Heart",
+  "anthem.airy": "Airy Skies",
+  "anthem.synth": "Synth Dawn",
+  "anthem.shimmer": "Shimmer",
+  "anthem.ascension": "Ascension"
+};
+
+export function anthemTitle(key: string | null | undefined): string {
+  return ANTHEM_TITLES[key ?? ""] ?? "Anthems";
+}
+
+// ------------------------------------------------------------------ scene cosmetics (Phase 6)
+
+/** A sky replaces the rank's sky gradient (top -> bottom). */
+export type SkyLook = { top: string; bottom: string };
+
+export const SKY_LOOKS: Record<string, SkyLook> = {
+  "sky.meadow-dawn": { top: "#12233a", bottom: "#3a5a2f" },
+  "sky.dusk-fire": { top: "#2a0f0a", bottom: "#7a2d12" },
+  "sky.nebula": { top: "#120b2e", bottom: "#5a2a8a" },
+  "sky.void-veil": { top: "#000000", bottom: "#101426" }
+};
+
+export function skyLook(key: string | null | undefined): SkyLook | null {
+  return SKY_LOOKS[key ?? ""] ?? null;
+}
+
+/** An aura is a glowing ring around the presence figure. */
+export type AuraLook = { color: string; /** ring width in scene units */ width: number; animated: boolean };
+
+export const AURA_LOOKS: Record<string, AuraLook> = {
+  "aura.ember-ring": { color: "#ff7a2f", width: 2.2, animated: false },
+  "aura.tidal-glow": { color: "#38bdf8", width: 2.8, animated: true },
+  "aura.aurora-crown": { color: "#b07cff", width: 3.4, animated: true },
+  "aura.star-shard": { color: "#ffd45a", width: 4, animated: true },
+  "aura.ascended": { color: "#ffe9a3", width: 4.6, animated: true }
+};
+
+export function auraLook(key: string | null | undefined): AuraLook | null {
+  return AURA_LOOKS[key ?? ""] ?? null;
+}
+
+/** An ambient effect scatters little motes over the scene (deterministic positions). */
+export type AmbientLook = { color: string; count: number; rise: boolean };
+
+export const AMBIENT_LOOKS: Record<string, AmbientLook> = {
+  "ambient.pollen": { color: "#d9a066", count: 10, rise: false },
+  "ambient.ember-motes": { color: "#ff7a2f", count: 12, rise: true },
+  "ambient.fireflies": { color: "#a3e635", count: 14, rise: false },
+  "ambient.stardust": { color: "#e0d7ff", count: 18, rise: true }
+};
+
+export function ambientLook(key: string | null | undefined): AmbientLook | null {
+  return AMBIENT_LOOKS[key ?? ""] ?? null;
+}
+
+// ------------------------------------------------------------------ Mystery Caches (Phase 6)
+
+export const RARITY_ORDER = ["COMMON", "RARE", "EPIC", "LEGENDARY"] as const;
+export type Rarity = (typeof RARITY_ORDER)[number];
+
+export function rarityColor(rarity: string): string {
+  switch (rarity) {
+    case "RARE": return "#38bdf8";
+    case "EPIC": return "#b07cff";
+    case "LEGENDARY": return "#ffd45a";
+    default: return "#9ca3af";
+  }
+}
+
+/** GET /api/cosmetics/caches: counters plus the exact odds, shown in the UI with no secrets. */
+export type CacheStateDto = {
+  unopenedCaches: number;
+  shards: number;
+  solvesSinceCache: number;
+  solvesForGuarantee: number;
+  dropPercent: number[];      // EASY, MEDIUM, HARD
+  opensSinceRare: number;
+  opensForRarePity: number;
+  openPercent: number[];      // COMMON, RARE, EPIC, LEGENDARY
+  duplicateShards: number[];
+  craftCost: number[];
+};
+
+/** POST /api/cosmetics/caches/open: what one cache contained. */
+export type CacheOpenResultDto = {
+  rarity: Rarity;
+  key: string;
+  name: string;
+  category: string;
+  wasDuplicate: boolean;
+  shardsGained: number;
+  shards: number;
+  unopenedCaches: number;
+};
+
+/** POST /api/cosmetics/craft. */
+export type CraftResultDto = {
+  key: string;
+  name: string;
+  category: string;
+  rarity: Rarity;
+  shardsSpent: number;
+  shardsLeft: number;
 };

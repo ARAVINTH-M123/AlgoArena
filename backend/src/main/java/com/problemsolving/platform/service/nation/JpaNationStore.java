@@ -1,16 +1,20 @@
 package com.problemsolving.platform.service.nation;
 
+import com.problemsolving.platform.domain.entity.CacheOpenLog;
 import com.problemsolving.platform.domain.entity.Nation;
 import com.problemsolving.platform.domain.entity.NationActiveDay;
 import com.problemsolving.platform.domain.entity.NationCompletedItem;
+import com.problemsolving.platform.domain.entity.NationCosmeticOwned;
 import com.problemsolving.platform.domain.entity.NationDailyCounter;
 import com.problemsolving.platform.domain.entity.NationProblemAward;
 import com.problemsolving.platform.domain.entity.NationRankEvent;
 import com.problemsolving.platform.domain.entity.NationTrackState;
 import com.problemsolving.platform.domain.entity.User;
 import com.problemsolving.platform.domain.enums.NationTrack;
+import com.problemsolving.platform.repository.CacheOpenLogRepository;
 import com.problemsolving.platform.repository.NationActiveDayRepository;
 import com.problemsolving.platform.repository.NationCompletedItemRepository;
+import com.problemsolving.platform.repository.NationCosmeticOwnedRepository;
 import com.problemsolving.platform.repository.NationDailyCounterRepository;
 import com.problemsolving.platform.repository.NationProblemAwardRepository;
 import com.problemsolving.platform.repository.NationRankEventRepository;
@@ -39,6 +43,8 @@ public class JpaNationStore implements NationStore {
     private final NationDailyCounterRepository dailyCounterRepository;
     private final NationActiveDayRepository activeDayRepository;
     private final NationRankEventRepository rankEventRepository;
+    private final NationCosmeticOwnedRepository ownedCosmeticRepository;
+    private final CacheOpenLogRepository cacheOpenLogRepository;
     private final UserRepository userRepository;
 
     public JpaNationStore(NationRepository nationRepository,
@@ -48,6 +54,8 @@ public class JpaNationStore implements NationStore {
                           NationDailyCounterRepository dailyCounterRepository,
                           NationActiveDayRepository activeDayRepository,
                           NationRankEventRepository rankEventRepository,
+                          NationCosmeticOwnedRepository ownedCosmeticRepository,
+                          CacheOpenLogRepository cacheOpenLogRepository,
                           UserRepository userRepository) {
         this.nationRepository = nationRepository;
         this.trackStateRepository = trackStateRepository;
@@ -56,6 +64,8 @@ public class JpaNationStore implements NationStore {
         this.dailyCounterRepository = dailyCounterRepository;
         this.activeDayRepository = activeDayRepository;
         this.rankEventRepository = rankEventRepository;
+        this.ownedCosmeticRepository = ownedCosmeticRepository;
+        this.cacheOpenLogRepository = cacheOpenLogRepository;
         this.userRepository = userRepository;
     }
 
@@ -109,6 +119,11 @@ public class JpaNationStore implements NationStore {
     }
 
     @Override
+    public Optional<NationDailyCounter> findDailyCounter(Long nationId, LocalDate day) {
+        return dailyCounterRepository.findByNationIdAndLocalDay(nationId, day);
+    }
+
+    @Override
     public boolean recordActiveDay(Long nationId, LocalDate day) {
         if (activeDayRepository.existsByNationIdAndLocalDay(nationId, day)) {
             return false;
@@ -154,6 +169,26 @@ public class JpaNationStore implements NationStore {
     @Override
     public NationRankEvent saveRankEvent(NationRankEvent event) {
         return rankEventRepository.save(event);
+    }
+
+    @Override
+    public List<NationCosmeticOwned> findOwnedCosmetics(Long userId) {
+        return ownedCosmeticRepository.findByUserId(userId);
+    }
+
+    @Override
+    public boolean ownsCosmetic(Long userId, String cosmeticKey) {
+        return ownedCosmeticRepository.existsByUserIdAndCosmeticKey(userId, cosmeticKey);
+    }
+
+    @Override
+    public NationCosmeticOwned saveOwnedCosmetic(NationCosmeticOwned owned) {
+        return ownedCosmeticRepository.save(owned);
+    }
+
+    @Override
+    public CacheOpenLog saveCacheOpenLog(CacheOpenLog log) {
+        return cacheOpenLogRepository.save(log);
     }
 
     @Override

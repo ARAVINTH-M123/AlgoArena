@@ -1,7 +1,9 @@
 package com.problemsolving.platform.service.nation;
 
+import com.problemsolving.platform.domain.entity.CacheOpenLog;
 import com.problemsolving.platform.domain.entity.Nation;
 import com.problemsolving.platform.domain.entity.NationCompletedItem;
+import com.problemsolving.platform.domain.entity.NationCosmeticOwned;
 import com.problemsolving.platform.domain.entity.NationDailyCounter;
 import com.problemsolving.platform.domain.entity.NationProblemAward;
 import com.problemsolving.platform.domain.entity.NationRankEvent;
@@ -34,6 +36,8 @@ public class InMemoryNationStore implements NationStore {
     private final Map<String, NationTrackState> trackStates = new HashMap<>();
     private final List<NationCompletedItem> completedItems = new ArrayList<>();
     private final List<NationRankEvent> rankEvents = new ArrayList<>();
+    private final Map<String, NationCosmeticOwned> ownedCosmetics = new HashMap<>();
+    private final List<CacheOpenLog> cacheOpenLogs = new ArrayList<>();
 
     private void assignId(Object entity) {
         try {
@@ -92,6 +96,11 @@ public class InMemoryNationStore implements NationStore {
     }
 
     @Override
+    public Optional<NationDailyCounter> findDailyCounter(Long nationId, LocalDate day) {
+        return Optional.ofNullable(counters.get(nationId + ":" + day));
+    }
+
+    @Override
     public boolean recordActiveDay(Long nationId, LocalDate day) {
         return activeDays.add(nationId + ":" + day);
     }
@@ -139,7 +148,44 @@ public class InMemoryNationStore implements NationStore {
         return event;
     }
 
+    // ---------------- acquired cosmetics (Phase 6) ----------------
+
+    @Override
+    public List<NationCosmeticOwned> findOwnedCosmetics(Long userId) {
+        return ownedCosmetics.values().stream()
+                .filter(owned -> owned.getUserId().equals(userId))
+                .sorted(java.util.Comparator.comparing(NationCosmeticOwned::getAcquiredAt))
+                .toList();
+    }
+
+    @Override
+    public boolean ownsCosmetic(Long userId, String cosmeticKey) {
+        return ownedCosmetics.containsKey(userId + ":" + cosmeticKey);
+    }
+
+    @Override
+    public NationCosmeticOwned saveOwnedCosmetic(NationCosmeticOwned owned) {
+        assignId(owned);
+        ownedCosmetics.put(owned.getUserId() + ":" + owned.getCosmeticKey(), owned);
+        return owned;
+    }
+
+    @Override
+    public CacheOpenLog saveCacheOpenLog(CacheOpenLog log) {
+        assignId(log);
+        cacheOpenLogs.add(log);
+        return log;
+    }
+
     // ---------------- test helpers ----------------
+
+    public List<CacheOpenLog> cacheLogs(Long userId) {
+        return cacheOpenLogs.stream().filter(log -> log.getUserId().equals(userId)).toList();
+    }
+
+    public NationCosmeticOwned owned(Long userId, String cosmeticKey) {
+        return ownedCosmetics.get(userId + ":" + cosmeticKey);
+    }
 
     public int nationCount() {
         return nationsByUser.size();

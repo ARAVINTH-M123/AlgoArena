@@ -1,6 +1,9 @@
 import CityGrid from "@/components/nation/CityGrid";
+import { FlagContent } from "@/components/nation/Flag";
 import NationFrame from "@/components/nation/NationFrame";
 import PresenceFigure, { FIGURE_X, PresenceCloudCover } from "@/components/nation/PresenceFigure";
+import { ambientLook, skyLook } from "@/lib/cosmetics";
+import { normalizeFlag } from "@/lib/flags";
 import { SCENE_HEIGHT, SCENE_WIDTH, paletteFor, rankTitle, type NationDto } from "@/lib/nation";
 import type { PresenceView } from "@/lib/presence";
 
@@ -8,15 +11,24 @@ const SCENE_CSS = `
 @keyframes nation-drift { from { transform: translateX(-36px); } to { transform: translateX(36px); } }
 @keyframes nation-blink { 50% { opacity: 0; } }
 @keyframes nation-flicker { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.55; } }
+@keyframes nation-flag-wave { 0%, 100% { transform: skewY(-1.8deg) skewX(0.6deg); } 50% { transform: skewY(1.8deg) skewX(-0.6deg); } }
+@keyframes nation-aura-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes nation-mote-rise { from { transform: translateY(0); opacity: 0.7; } to { transform: translateY(-46px); opacity: 0; } }
+@keyframes nation-mote-float { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
 .nation-cloud { animation: nation-drift 38s ease-in-out infinite alternate; }
 .nation-cloud-slow { animation-duration: 56s; animation-direction: alternate-reverse; }
 .nation-cursor { animation: nation-blink 1s steps(1) infinite; }
 .nation-fire { animation: nation-flicker 1.6s ease-in-out infinite; }
+.nation-flag-wave { animation: nation-flag-wave 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
+.nation-aura-pulse { animation: nation-aura-pulse 2.6s ease-in-out infinite; }
+.nation-mote-rise { animation: nation-mote-rise 5.2s linear infinite; }
+.nation-mote-float { animation: nation-mote-float 6.4s ease-in-out infinite alternate; }
 @keyframes nation-fadein { from { opacity: 0; } to { opacity: 1; } }
 .nation-figure-slide { transition: transform 1.4s ease-in-out; }
 .nation-figure-fade { animation: nation-fadein 0.8s ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  .nation-cloud, .nation-cursor, .nation-fire { animation: none; }
+  .nation-cloud, .nation-cursor, .nation-fire, .nation-flag-wave, .nation-aura-pulse,
+  .nation-mote-rise, .nation-mote-float { animation: none; }
   .nation-figure-slide { transition: none; }
 }
 `;
@@ -26,6 +38,13 @@ const STARS = Array.from({ length: 46 }, (_, i) => {
   const a = (i * 7919 + 13) % 1000;
   const b = (i * 104729 + 71) % 1000;
   return { x: 10 + (a / 1000) * 780, y: 8 + (b / 1000) * 120, r: 0.6 + ((a + b) % 7) / 6 };
+});
+
+// deterministic mote positions for the ambient scene cosmetics (Phase 6)
+const MOTES = Array.from({ length: 18 }, (_, i) => {
+  const a = (i * 6271 + 101) % 1000;
+  const b = (i * 2531 + 47) % 1000;
+  return { x: 24 + (a / 1000) * 752, y: 150 + (b / 1000) * 240, r: 1.2 + ((a + b) % 5) / 4, delay: (i % 7) * 0.8 };
 });
 
 type Props = {
@@ -39,6 +58,8 @@ type Props = {
 /** Layered scene, back to front: sky and clouds, presence figure, mountain ridge, city. */
 export default function NationScene({ nation, presence, lastActiveText = "Offline" }: Props) {
   const palette = paletteFor(nation.rankIndex);
+  const sky = skyLook(nation.skyKey);                 // Phase 6: a cache sky replaces the rank gradient
+  const ambient = ambientLook(nation.ambientKey);
   const built = nation.completedItems.length;
   const summary = `${nation.name}, ${rankTitle(nation.rankName, nation.tier)}. ${built} ${built === 1 ? "item" : "items"} built.`;
 
@@ -50,8 +71,8 @@ export default function NationScene({ nation, presence, lastActiveText = "Offlin
         <style>{SCENE_CSS}</style>
         <defs>
           <linearGradient id="nation-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={palette.skyTop} />
-            <stop offset="1" stopColor={palette.skyBottom} />
+            <stop offset="0" stopColor={sky ? sky.top : palette.skyTop} />
+            <stop offset="1" stopColor={sky ? sky.bottom : palette.skyBottom} />
           </linearGradient>
           <linearGradient id="nation-ground" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={palette.mountainFront} />
@@ -94,7 +115,9 @@ export default function NationScene({ nation, presence, lastActiveText = "Offlin
         </g>
 
         {/* the presence figure stands behind the ridge; thin cloud wisps drift in front of it */}
-        {presence && <PresenceFigure presence={presence} rankIndex={nation.rankIndex} accent={palette.accent} />}
+        {presence && (
+          <PresenceFigure presence={presence} rankIndex={nation.rankIndex} accent={palette.accent} auraKey={nation.auraKey} />
+        )}
         <g className="nation-cloud nation-cloud-slow" fill="#ffffff" opacity={0.08}>
           <ellipse cx={FIGURE_X - 40} cy={150} rx={60} ry={5} />
           <ellipse cx={FIGURE_X + 50} cy={176} rx={46} ry={4} />
@@ -109,6 +132,15 @@ export default function NationScene({ nation, presence, lastActiveText = "Offlin
         {/* ground / territory */}
         <rect y={262} width={SCENE_WIDTH} height={SCENE_HEIGHT - 262} fill="url(#nation-ground)" />
         <line x1={0} x2={SCENE_WIDTH} y1={262.5} y2={262.5} stroke={palette.accent} strokeOpacity={0.35} />
+
+        {/* the nation flag on its pole at the left edge (Phase 5B); waves with a CSS skew unless reduced motion */}
+        <line x1={20} y1={276} x2={20} y2={198} stroke="#5b6068" strokeWidth={2.4} strokeLinecap="round" />
+        <circle cx={20} cy={196} r={2.2} fill={palette.accent} />
+        <g transform="translate(20 198) scale(0.52)">
+          <g className="nation-flag-wave">
+            <FlagContent flag={normalizeFlag(nation.flag, nation.rankIndex)} />
+          </g>
+        </g>
 
         {/* light beam from the figure onto the city right after a solve */}
         {presence?.justSolved && presence.status === "ONLINE" && (
@@ -126,6 +158,19 @@ export default function NationScene({ nation, presence, lastActiveText = "Offlin
             <ellipse cx={400} cy={300} rx={46} ry={14} fill={palette.accent} opacity={0.18} />
           </g>
         )}
+
+        {/* equipped ambient cosmetic (Phase 6): deterministic motes drifting over the scene */}
+        {ambient && MOTES.slice(0, ambient.count).map((mote, i) => (
+          <g key={i} transform={`translate(${mote.x} ${mote.y})`}>
+            <circle
+              className={ambient.rise ? "nation-mote-rise" : "nation-mote-float"}
+              r={mote.r}
+              fill={ambient.color}
+              opacity={0.6}
+              style={{ animationDelay: `${mote.delay}s` }}
+            />
+          </g>
+        ))}
 
         <CityGrid nation={nation} accent={palette.accent} />
       </svg>

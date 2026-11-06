@@ -2,6 +2,8 @@ package com.problemsolving.platform.service.nation;
 
 import com.problemsolving.platform.api.dto.nation.NationDto;
 import com.problemsolving.platform.api.dto.nation.UpdateNationProfileRequest;
+import com.problemsolving.platform.api.dto.cosmetics.FlagDto;
+import com.problemsolving.platform.api.dto.cosmetics.FlagRequest;
 import com.problemsolving.platform.config.NationProperties;
 import com.problemsolving.platform.domain.entity.Nation;
 import com.problemsolving.platform.domain.entity.NationTrackState;
@@ -17,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,7 +43,8 @@ class NationProfileServiceTest {
         store = new InMemoryNationStore();
         store.registerUser(USER, NAME);
         props = new NationProperties();
-        awards = new NationService(store, props);
+        awards = new NationService(store, props, new com.problemsolving.platform.service.cosmetics.CacheService(store,
+                new ScriptedRandom(new double[]{0.999})));
         presence = new PresenceService(new InMemoryPresenceStore(), store, props);
         profile = new NationProfileService(store, props, presence);
     }
@@ -119,6 +123,10 @@ class NationProfileServiceTest {
         assertEquals(900 * M, requirement(dto, "XP").required());
         assertFalse(requirement(dto, "XP").met());
         assertEquals("Build the Watchtower", requirement(dto, "GATE_LANDMARK").label());
+        assertEquals(0, dto.retention().streakDays());                // Phase 7: retention starts at zero
+        assertEquals(0, dto.retention().bestStreakDays());
+        assertEquals(0, dto.retention().solvesToday());
+        assertEquals(3, dto.retention().dailyGoalTarget());
         assertEquals(0, store.nationCount());                         // reading creates nothing
     }
 
@@ -139,8 +147,9 @@ class NationProfileServiceTest {
             awards.awardForAcceptedSolve(USER, 100L + day, Difficulty.EASY, T0.plus(Duration.ofDays(day)));
         }
         NationDto dto = profile.view(NAME, false, T0.plus(Duration.ofDays(60)));
-        assertEquals(450 * M, dto.xp());
-        assertEquals(50, dto.nextRank().percentToNext());           // 450 of 900 XP
+        // 45 days x (10 + 5 goal bonus) = 675, plus streak milestones 3/7/14/30 = 810 and lifetime 10/25 = 170
+        assertEquals(1655 * M, dto.xp());
+        assertEquals(100, dto.nextRank().percentToNext());          // way past the 900 XP for Init (gate still missing)
         assertEquals(45, dto.solves().easy());
         assertEquals(45L, dto.solves().activeDays());
         // 450 basics points / 50 = 9 items; 180 structures / 80 = 2 items; 45 landmark points = none yet
@@ -277,6 +286,40 @@ class NationProfileServiceTest {
         assertEquals(5 * M, awards.awardForAcceptedSolve(USER, 900L, Difficulty.EASY, nextMiddayUtc).xpGained());
     }
 
+    // ------------------------------------------------------------- retention (Phase 7)
+
+    @Test
+    void retentionSnapshotShowsTheStreakAndTodaysGoalProgress() {
+        // three solves on the nation's first day: goal 3/3, streak 1
+        awards.awardForAcceptedSolve(USER, 10L, Difficulty.EASY, T0);
+        awards.awardForAcceptedSolve(USER, 11L, Difficulty.MEDIUM, T0.plusSeconds(60));
+        awards.awardForAcceptedSolve(USER, 12L, Difficulty.HARD, T0.plusSeconds(120));
+        NationDto sameDay = profile.view(NAME, true, T0.plusSeconds(180));
+        assertEquals(1, sameDay.retention().streakDays());
+        assertEquals(1, sameDay.retention().bestStreakDays());
+        assertEquals(3, sameDay.retention().solvesToday());
+        assertEquals(3, sameDay.retention().dailyGoalTarget());
+
+        // two more days keep the streak and reset the daily counter
+        awards.awardForAcceptedSolve(USER, 13L, Difficulty.EASY, T0.plus(Duration.ofDays(1)));
+        awards.awardForAcceptedSolve(USER, 14L, Difficulty.EASY, T0.plus(Duration.ofDays(2)));
+        NationDto thirdDay = profile.view(NAME, true, T0.plus(Duration.ofDays(2)).plusSeconds(60));
+        assertEquals(3, thirdDay.retention().streakDays());
+        assertEquals(3, thirdDay.retention().bestStreakDays());
+        assertEquals(1, thirdDay.retention().solvesToday());
+    }
+
+    @Test
+    void retentionIsCountedInTheNationTimeZone() {
+        changeZone("Asia/Kolkata", T0);
+        // 1 March 20:00 UTC is already 2 March in India: one solve counts as 2 March
+        awards.awardForAcceptedSolve(USER, 20L, Difficulty.EASY, Instant.parse("2026-03-01T20:00:00Z"));
+        assertEquals(0, profile.view(NAME, true, Instant.parse("2026-03-01T10:00:00Z")).retention().solvesToday());
+        assertEquals(1, profile.view(NAME, true, Instant.parse("2026-03-01T21:00:00Z")).retention().solvesToday());
+        // 2 March 15:30 in India is still the same local day
+        assertEquals(1, profile.view(NAME, true, Instant.parse("2026-03-02T10:00:00Z")).retention().solvesToday());
+    }
+
     // -------------------------------------------------------------- presence in the nation view
 
     @Test
@@ -314,14 +357,125 @@ class NationProfileServiceTest {
         NationDto fresh = profile.view(NAME, false, T0);
         assertEquals("theme.void", fresh.themeKey());
         assertEquals("border.thin-gray", fresh.borderKey());
+        assertEquals("anthem.soft-pulse", fresh.anthemKey());
 
         prepare(4, 30_000, 0, 0, true);                                   // Kernel
         assertEquals("border.stone", profile.view(NAME, false, T0).borderKey());
+        assertEquals("anthem.march", profile.view(NAME, false, T0).anthemKey());
 
         EquipRequest pick = new EquipRequest();
         pick.setCategory("BORDER");
         pick.setKey("border.wood-grain");
         new CosmeticService(store, props).equip(NAME, pick, T0);
         assertEquals("border.wood-grain", profile.view(NAME, false, T0).borderKey());   // visitors see the owner's pick
+    }
+
+    // ------------------------------------------------------------------ flag (Phase 5B)
+
+    private FlagRequest flag(String pattern, List<String> colors, String emblem) {
+        FlagRequest r = new FlagRequest();
+        r.setPattern(pattern);
+        r.setColors(colors);
+        r.setEmblem(emblem);
+        return r;
+    }
+
+    @Test
+    void flagsComeWithADefaultAndACustomOneIsStoredAndVisibleToVisitors() {
+        // default: horizontal slate over charcoal with the emblem of the current rank
+        FlagDto fresh = profile.view(NAME, false, T0).flag();
+        assertEquals("pattern.horizontal", fresh.pattern());
+        assertEquals(List.of("color.slate", "color.charcoal"), fresh.colors());
+        assertEquals("emblem.cursor", fresh.emblem());
+
+        prepare(4, 30_000, 0, 0, true);                                   // Kernel: default emblem follows the rank
+        assertEquals("emblem.shield", profile.view(NAME, true, T0).flag().emblem());
+
+        UpdateNationProfileRequest request = new UpdateNationProfileRequest();
+        request.setFlag(flag("pattern.cross", List.of("color.crimson", "color.white", "color.slate"), "emblem.shield"));
+        FlagDto saved = profile.updateProfile(NAME, request, T0).flag();
+        assertEquals("pattern.cross", saved.pattern());
+        assertEquals(List.of("color.crimson", "color.white", "color.slate"), saved.colors());
+        assertEquals("emblem.shield", saved.emblem());
+
+        FlagDto visitor = profile.view(NAME, false, T0).flag();           // visitors see the flag too
+        assertEquals("pattern.cross", visitor.pattern());
+        assertEquals("emblem.shield", visitor.emblem());
+
+        // pinning nothing: an explicit flag without emblem is kept even after rank-ups
+        request.setFlag(flag("pattern.triangle", List.of("color.teal", "color.pink"), null));
+        assertEquals(null, profile.updateProfile(NAME, request, T0).flag().emblem());
+        prepare(5, 60_000, 0, 0, true);
+        assertEquals(null, profile.view(NAME, true, T0).flag().emblem());          // stays, no rank emblem added
+        assertEquals("pattern.triangle", profile.view(NAME, true, T0).flag().pattern());
+    }
+
+    @Test
+    void flagValidationMessagesAreExactAndChangeNothing() {
+        UpdateNationProfileRequest request = new UpdateNationProfileRequest();
+        request.setFlag(flag("pattern.nope", List.of("color.slate", "color.white"), null));
+        assertEquals("Unknown flag pattern", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        request.setFlag(flag("pattern.cross", List.of("color.slate"), null));
+        assertEquals("A flag needs 2 or 3 colors", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        request.setFlag(flag("pattern.cross", List.of("color.slate", "color.white", "color.teal", "color.pink"), null));
+        assertEquals("A flag needs 2 or 3 colors", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        request.setFlag(flag("pattern.cross", List.of("color.slate", "color.gold"), null));
+        assertEquals("Unknown flag color", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        request.setFlag(flag("pattern.cross", List.of("color.slate", "color.white"), "emblem.crown"));
+        assertEquals("Unknown flag emblem", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        request.setFlag(flag("pattern.cross", List.of("color.slate", "color.white"), "emblem.spiral"));
+        assertEquals("Locked: reach rank Singularity to unlock Spiral",
+                badRequest(() -> profile.updateProfile(NAME, request, T0)));
+
+        // nothing above consumed anything or stored a flag: still the pristine default
+        FlagDto fresh = profile.view(NAME, true, T0).flag();
+        assertEquals("pattern.horizontal", fresh.pattern());
+        assertEquals("emblem.cursor", fresh.emblem());
+    }
+
+    @Test
+    void aBadFlagChangesNothingElse() {
+        UpdateNationProfileRequest request = new UpdateNationProfileRequest();
+        request.setName("Renamed Land");
+        request.setFlag(flag("pattern.cross", List.of("color.gold"), null));
+        assertEquals("Unknown flag color", badRequest(() -> profile.updateProfile(NAME, request, T0)));
+        assertEquals("alice's Land", profile.view(NAME, true, T0).name());    // the name never got applied
+        assertEquals("emblem.cursor", profile.view(NAME, true, T0).flag().emblem());
+
+        // the same request with a valid flag applies BOTH
+        request.setFlag(flag("pattern.vertical", List.of("color.white", "color.green"), null));
+        NationDto ok = profile.updateProfile(NAME, request, T0);
+        assertEquals("Renamed Land", ok.name());
+        assertEquals("pattern.vertical", ok.flag().pattern());
+    }
+
+    @Test
+    void sendingTheCurrentFlagAgainChangesNothing() {
+        UpdateNationProfileRequest request = new UpdateNationProfileRequest();
+        request.setFlag(flag("pattern.horizontal", List.of("color.slate", "color.charcoal"), "emblem.cursor"));
+        profile.updateProfile(NAME, request, T0);
+        Nation stored = store.nationOrNull(USER);
+        assertEquals(null, stored.getFlagPattern());       // identical to the default -> not even stored
+        assertEquals(null, stored.getFlagColors());
+        assertEquals(null, stored.getFlagEmblem());
+    }
+
+    @Test
+    void rankUpsMoveTheAutomaticAnthemAndDefaultFlagEmblem() {
+        prepare(0, 0, 0, 0, false);
+        NationDto before = profile.view(NAME, true, T0);
+        assertEquals("anthem.soft-pulse", before.anthemKey());
+        assertEquals("emblem.cursor", before.flag().emblem());
+
+        prepare(2, 3_000, 0, 0, true);                     // Boot
+        NationDto after = profile.view(NAME, true, T0);
+        assertEquals("anthem.chiptune", after.anthemKey());
+        assertEquals("emblem.gear", after.flag().emblem());          // default flag follows the rank
+        assertEquals("pattern.horizontal", after.flag().pattern());  // ...but never the shape the owner picked
     }
 }

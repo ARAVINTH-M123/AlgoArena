@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { auraLook } from "@/lib/cosmetics";
 import type { PresenceView } from "@/lib/presence";
 
 /** Where the figure stands in the scene (the valley of the mountain ridge). */
@@ -40,12 +41,15 @@ type FigureProps = {
   rankIndex: number;
   /** Aura color; later cosmetics can override the rank accent. */
   accent: string;
+  /** Equipped aura cosmetic (Phase 6); null shows no ring. */
+  auraKey?: string | null;
 };
 
 /** Drawn BEFORE the mountain layers so the ridge hides the lower body. */
-export default function PresenceFigure({ presence, rankIndex, accent }: FigureProps) {
+export default function PresenceFigure({ presence, rankIndex, accent, auraKey }: FigureProps) {
   const reduced = useReducedMotion();
   const look = figureLook(rankIndex, accent);
+  const aura = auraLook(auraKey);
 
   let offset = OFFSET_OFFLINE;
   if (presence.status === "ONLINE") offset = presence.justSolved ? OFFSET_JUST_SOLVED : OFFSET_ONLINE;
@@ -69,6 +73,17 @@ export default function PresenceFigure({ presence, rankIndex, accent }: FigurePr
         )}
         {look.halo && <ellipse cx={0} cy={90} rx={26} ry={7} fill="none" stroke={accent} strokeWidth={2.4} />}
         {look.crown && <path d="M -14 101 L -11 84 L -4 94 L 0 80 L 4 94 L 11 84 L 14 101 Z" fill={accent} opacity={0.9} />}
+        {aura && (
+          <g>
+            <circle cx={0} cy={118} r={26 + aura.width * 2} fill="none" stroke={aura.color}
+              strokeWidth={aura.width} opacity={0.85}
+              className={aura.animated && !reduced ? "nation-aura-pulse" : undefined} />
+            {aura.width >= 4 && (
+              <circle cx={0} cy={118} r={30 + aura.width * 2.4} fill="none" stroke={aura.color}
+                strokeWidth={1} opacity={0.4} />
+            )}
+          </g>
+        )}
         <circle cx={0} cy={118} r={19} fill={look.fill} fillOpacity={look.fillOpacity} stroke={look.stroke} strokeWidth={look.strokeWidth} />
         <path
           d="M -62 300 L -62 168 Q -62 148 -36 143 L -12 136 L -12 130 L 12 130 L 12 136 L 36 143 Q 62 148 62 168 L 62 300 Z"
