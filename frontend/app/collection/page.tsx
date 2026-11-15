@@ -117,7 +117,7 @@ export default function CollectionPage() {
           <p className="text-sm text-gray-400">Mystery Caches, shards and every scene cosmetic you own.</p>
         </div>
         <Link href="/profile" className="rounded-lg border border-platform-border px-3 py-2 text-xs text-platform-text hover:border-platform-accent">
-          Nation settings
+          Back to profile
         </Link>
       </header>
 

@@ -15,6 +15,15 @@ import type { NationResultDto } from "@/lib/nation";
 
 type EditorTab = "code" | "result";
 
+type SubmissionResponse = {
+  verdict: string;
+  expectedOutput: string | null;
+  actualOutput: string | null;
+  failedTestcaseInput: string | null;
+  executionMessage: string | null;
+  nationResult: NationResultDto | null;
+};
+
 export default function SolvePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const problemId = Number(id);
@@ -42,9 +51,9 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
     setIsSubmitting(true);
 
     try {
-      const { data } = await api.post("/submissions", { 
-        problemId, 
-        language: "JAVA", 
+      const { data } = await api.post<SubmissionResponse>("/submissions", {
+        problemId,
+        language: "JAVA",
         code
       });
       setVerdict(data.verdict);
@@ -52,7 +61,7 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
       setActualOutput(data.actualOutput ?? "");
       setFailedTestcaseInput(data.failedTestcaseInput ?? "");
       setExecutionMessage(data.executionMessage ?? "");
-      const nation = (data.nationResult ?? null) as NationResultDto | null;
+      const nation = data.nationResult ?? null;
       setNationResult(nation);
       setShowRankUp(Boolean(nation && nation.rankUps.length > 0));
       setHasResultTab(true);
@@ -73,6 +82,18 @@ export default function SolvePage({ params }: { params: Promise<{ id: string }> 
     if (value === "ACCEPTED") return "text-green-400";
     if (value === "WRONG_ANSWER" || value === "RUNTIME_ERROR" || value === "COMPILATION_ERROR") return "text-red-400";
     return "text-yellow-300";
+  }
+
+  if (!Number.isSafeInteger(problemId) || problemId <= 0) {
+    return (
+      <RequireAuth>
+        <section className="panel mx-auto max-w-xl text-center">
+          <h1 className="text-xl font-bold text-red-300">Invalid problem</h1>
+          <p className="mt-2 text-sm text-gray-400">This solve link does not contain a valid problem ID.</p>
+          <BackArrowButton fallbackHref="/problems" label="Back to problems" className="mt-5" />
+        </section>
+      </RequireAuth>
+    );
   }
 
   const leftPanel = (

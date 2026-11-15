@@ -56,7 +56,7 @@ export type NationDto = {
   renameAvailableAt: string | null;
   timeZoneChangeAvailableAt: string | null;
   presence: PresenceDto;
-  /** True only for the owner while "Appear offline" is on (visitors always get false). */
+  /** True only for the owner while Stealth mode is on (visitors always get false). */
   appearOffline: boolean;
   /** Editor theme, frame and anthem in effect for this nation (see lib/cosmetics.ts). */
   themeKey: string;

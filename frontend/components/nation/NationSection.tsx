@@ -8,10 +8,7 @@ import { presenceLabel } from "@/lib/presence";
 import { usePresenceStream } from "@/hooks/usePresenceStream";
 import { usePresenceView } from "@/hooks/usePresenceView";
 import AnthemPlayer from "@/components/nation/AnthemPlayer";
-import CosmeticPicker from "@/components/nation/CosmeticPicker";
-import FlagEditor from "@/components/nation/FlagEditor";
 import NationScene from "@/components/nation/NationScene";
-import NationSettings from "@/components/nation/NationSettings";
 import PresenceStatusLine from "@/components/nation/PresenceStatusLine";
 import RankBadge from "@/components/nation/RankBadge";
 import RankRequirements from "@/components/nation/RankRequirements";
@@ -126,20 +123,6 @@ function NationBody({ initial }: { initial: NationDto }) {
         <div><dt className="text-gray-400">Items built</dt><dd className="text-lg font-bold">{nation.completedItems.length}</dd></div>
       </dl>
 
-      {nation.owner && <NationSettings nation={nation} onUpdated={setNation} />}
-      {nation.owner && <FlagEditor nation={nation} onUpdated={setNation} />}
-      {nation.owner && (
-        <CosmeticPicker
-          onChanged={(cosmetics) =>
-            setNation((current) => ({
-              ...current,
-              themeKey: cosmetics.themeKey,
-              borderKey: cosmetics.borderKey,
-              anthemKey: cosmetics.anthemKey
-            }))
-          }
-        />
-      )}
     </section>
   );
 }

@@ -150,9 +150,9 @@ export default function NationSettings({ nation, onUpdated }: Props) {
             onChange={(event) => toggleAppearOffline(event.target.checked)}
           />
           <span>
-            Appear offline
+            Stealth mode
             <span className="block text-xs text-gray-500">
-              Visitors always see you as offline, with no last-seen time. You still see your true status.
+              Hide your live presence and last-seen time from visitors. You still see your true status.
             </span>
           </span>
         </label>

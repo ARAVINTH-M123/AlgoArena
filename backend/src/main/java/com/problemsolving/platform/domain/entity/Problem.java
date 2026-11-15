@@ -13,6 +13,9 @@ public class Problem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "external_id", unique = true, length = 100)
+    private String externalId;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -46,6 +49,14 @@ public class Problem {
 
     public Long getId() {
         return id;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public String getTitle() {

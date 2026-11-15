@@ -14,8 +14,7 @@ import { clearAdminToken, initAdminApiAuth, initApiAuth } from "@/lib/api";
 const userLinks = [
   { href: "/problems", label: "Problem List" },
   { href: "/submissions", label: "Submissions" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/collection", label: "Collection" }
+  { href: "/leaderboard", label: "Leaderboard" }
 ];
 
 const adminLinks = [
@@ -43,9 +42,7 @@ export default function Navbar() {
     ? "/admin/profile"
     : role === "ADMIN"
       ? "/admin/profile"
-      : username
-        ? `/profile/${encodeURIComponent(username)}`
-        : "/profile";
+      : "/profile";
 
   const isLinkActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
