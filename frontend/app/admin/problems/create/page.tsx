@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { api, getApiErrorMessage } from "@/lib/api";
+import { adminApi, getApiErrorMessage, initAdminApiAuth } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
 import BackArrowButton from "@/components/BackArrowButton";
 
@@ -86,10 +86,9 @@ export default function CreateProblemPage() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    initAdminApiAuth();
     try {
-      await api.post("/problems", {
+      await adminApi.post("/problems", {
         title,
         description,
         difficulty,

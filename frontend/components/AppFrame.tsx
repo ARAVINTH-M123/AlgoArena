@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export default function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const showAppMenu = pathname !== "/" && pathname !== "/login" && pathname !== "/register" && pathname !== "/admin";
+  const showAppMenu = pathname !== "/" && pathname !== "/login" && pathname !== "/register" && pathname !== "/admin/login";
   const isSolvePage = pathname.includes("/solve");
 
   useEffect(() => {

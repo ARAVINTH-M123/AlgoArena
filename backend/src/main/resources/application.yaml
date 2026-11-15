@@ -27,6 +27,14 @@ app:
   jwt:
     secret: cHJvYmxlbS1zb2x2aW5nLXBsYXRmb3JtLXNlY3VyZS1qd3Qtc2VjcmV0LWtleS0yMDI2
     expiration-ms: 86400000
+  admin:
+    bootstrap:
+      # Creates the FIRST admin account only; never overwrites an existing admin.
+      # Credentials come from environment variables and are never hardcoded.
+      enabled: ${ADMIN_BOOTSTRAP_ENABLED:true}
+      username: ${ADMIN_USERNAME:}
+      email: ${ADMIN_EMAIL:}
+      password: ${ADMIN_PASSWORD:}
 nation:
   award-enabled: true
   xp-multiplier: 1

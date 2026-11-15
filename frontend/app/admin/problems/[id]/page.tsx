@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import RequireAdmin from "@/components/RequireAdmin";
-import { api, getApiErrorMessage, initApiAuth } from "@/lib/api";
+import { adminApi, getApiErrorMessage, initAdminApiAuth } from "@/lib/api";
 import BackArrowButton from "@/components/BackArrowButton";
 
 type ProblemDetail = {
@@ -62,9 +62,9 @@ export default function AdminProblemDetailsPage({ params }: { params: Promise<{ 
     setLoading(true);
     setError("");
 
-    initApiAuth();
+    initAdminApiAuth();
 
-    Promise.all([api.get(`/problems/${id}`), api.get(`/problems/admin/${id}`)])
+    Promise.all([adminApi.get(`/problems/${id}`), adminApi.get(`/problems/admin/${id}`)])
       .then(([publicRes, adminRes]) => {
         const problemData = publicRes.data as ProblemDetail;
         setProblem(problemData);

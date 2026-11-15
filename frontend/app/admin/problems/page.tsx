@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { api, getApiErrorMessage, initApiAuth } from "@/lib/api";
+import { adminApi, getApiErrorMessage, initAdminApiAuth } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
 
 type Problem = {
@@ -30,8 +30,8 @@ export default function ManageProblemsPage() {
 
   async function loadProblems() {
     setLoading(true);
-    initApiAuth();
-    const res = await api.get("/problems");
+    initAdminApiAuth();
+    const res = await adminApi.get("/problems");
     setProblems(res.data.content ?? []);
     setLoading(false);
   }

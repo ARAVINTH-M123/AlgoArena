@@ -1,5 +1,9 @@
 import axios from "axios";
 import { clearAuthState, getAuthState } from "@/lib/auth";
+import {
+  clearAdminAuthState,
+  getAdminAuthState
+} from "@/lib/adminAuth";
 import type {
   CacheOpenResultDto,
   CacheStateDto,
@@ -37,12 +41,55 @@ export function clearToken() {
   delete api.defaults.headers.common.Authorization;
 }
 
+// ---------------------------------------------------------------- Management console API
+// Separate axios instance so admin requests always carry the admin session token
+// (never the player token) and 401s only tear down the admin session.
+
+export const adminApi = axios.create({
+  baseURL: API_BASE_URL
+});
+
+let adminAuthInitialized = false;
+
+export function initAdminApiAuth() {
+  if (adminAuthInitialized || typeof window === "undefined") {
+    return;
+  }
+
+  adminAuthInitialized = true;
+  const adminState = getAdminAuthState();
+  if (adminState?.token) {
+    setAdminToken(adminState.token);
+  }
+}
+
+export function setAdminToken(token: string) {
+  adminApi.defaults.headers.common.Authorization = `Bearer ${token}`;
+}
+
+export function clearAdminToken() {
+  delete adminApi.defaults.headers.common.Authorization;
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401 && typeof window !== "undefined") {
       clearToken();
       clearAuthState();
+    }
+    return Promise.reject(error);
+  }
+);
+
+adminApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Expired or invalid admin credentials: drop the console session. Route guards
+    // listening for ADMIN_AUTH_STATE_EVENT redirect to /admin/login.
+    if (axios.isAxiosError(error) && error.response?.status === 401 && typeof window !== "undefined") {
+      clearAdminToken();
+      clearAdminAuthState();
     }
     return Promise.reject(error);
   }

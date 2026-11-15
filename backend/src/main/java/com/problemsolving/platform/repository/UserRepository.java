@@ -1,6 +1,7 @@
 package com.problemsolving.platform.repository;
 
 import com.problemsolving.platform.domain.entity.User;
+import com.problemsolving.platform.domain.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,6 +12,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByUsernameOrEmail(String username, String email);
     List<User> findAllByEmailIgnoreCase(String email);
+    List<User> findAllByOrderByCreatedAtDesc();
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+    boolean existsByRole(Role role);
 }

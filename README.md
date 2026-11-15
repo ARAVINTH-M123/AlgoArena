@@ -196,3 +196,56 @@ is in memory) and add `spring.threads.virtual.enabled=true`.
 - Submission verdicts are currently simulated in backend service to provide a working end-to-end prototype.
 - You can replace the simulated judge with an actual sandboxed code execution engine.
 - This setup is local PostgreSQL based; Docker is optional and not required.
+
+## Management console (admin RBAC)
+
+The admin area is a role-based management console, fully separated from the player experience.
+
+### Roles
+
+- `USER` (default) and `ADMIN` live as an enum on the `users` entity (`role` column).
+- Public registration always creates `USER`; no public API accepts or changes a role.
+- Spring Security stores the authority as `ROLE_ADMIN`; every `/api/admin/**` request is
+  re-checked on the backend (URL rule + `@PreAuthorize`), regardless of what the UI shows.
+
+### Admin login and sessions
+
+- Player login (`POST /api/auth/login`) rejects ADMIN accounts; admin login
+  (`POST /api/auth/admin/login`) rejects non-admin accounts, so the two flows cannot cross over.
+- Frontend routes: `/admin/login` (admin login), `/admin` (management dashboard), `/admin/*`
+  (console pages). Unauthenticated visitors are redirected to `/admin/login`; signed-in
+  normal users are redirected to `/home`.
+- The console keeps its own session (`sessionStorage`, namespaced `algoarena.admin.*`) and a
+  dedicated axios instance, so an admin and a player session never overwrite each other.
+  Every protected admin page re-verifies the session against `GET /api/admin/me`.
+- Unauthenticated admin API calls get a JSON `401`; authenticated non-admin callers get a
+  JSON `403` (configured via `RestAuthenticationEntryPoint` / `RestAccessDeniedHandler`).
+- Logout clears the console session and returns to `/admin/login`; expired tokens are caught
+  by a 401 interceptor and handled the same way.
+
+### First admin account (bootstrap)
+
+No admin credentials are hardcoded. On first startup the backend creates the initial admin
+from environment variables (see `backend/.env.example`):
+
+```bash
+ADMIN_USERNAME=youradmin
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-me-8+chars   # stored as a BCrypt hash
+# ADMIN_BOOTSTRAP_ENABLED=true     # optional kill switch
+```
+
+Rules enforced by `AdminBootstrapConfig`:
+
+- If any `ADMIN` already exists, the bootstrap does nothing (never overwrites accounts).
+- Missing or weak configuration is logged and skipped — the app still starts.
+- There is no public admin registration endpoint; once setup succeeded the mechanism is inert.
+
+### Management dashboard modules
+
+`/admin` shows platform stats and the module registry. Live today: **User Management**
+(read-only directory from `GET /api/admin/users` — no password hashes are ever returned) and
+**Problem Management** (create/edit/delete). Planned modules (Submission Management,
+Analytics, Announcements, Dataset Import, System Settings, Audit Logs) are registered as
+placeholders and plug into the same `/api/admin/**` authorization boundary. Contest
+management is deliberately deferred to a later phase.

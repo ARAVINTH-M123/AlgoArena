@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { api } from "@/lib/api";
+import { adminApi, initAdminApiAuth } from "@/lib/api";
 
 export default function CreateContestPage() {
   const [name, setName] = useState("");
@@ -9,11 +9,10 @@ export default function CreateContestPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    initAdminApiAuth();
     const now = new Date();
     const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-    await api.post("/contests", { name, description, startTime: now.toISOString(), endTime: end.toISOString() });
+    await adminApi.post("/contests", { name, description, startTime: now.toISOString(), endTime: end.toISOString() });
     alert("Contest created");
   }
 

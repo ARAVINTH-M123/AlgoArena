@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api, getApiErrorMessage, setToken } from "@/lib/api";
+import { adminApi, getApiErrorMessage, initAdminApiAuth, setAdminToken } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
-import { getAuthState, persistAuthState } from "@/lib/auth";
+import { getAdminAuthState, persistAdminAuthState } from "@/lib/adminAuth";
 
 type Profile = {
   username: string;
@@ -23,10 +23,11 @@ export default function AdminProfilePage() {
   const toastTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const currentUsername = getAuthState()?.username ?? "admin";
+    initAdminApiAuth();
+    const currentUsername = getAdminAuthState()?.username ?? "admin";
     setNextUsername(currentUsername);
 
-    api.get(`/users/${currentUsername}`)
+    adminApi.get(`/users/${currentUsername}`)
       .then((res) => setProfile(res.data))
       .catch((err) => {
         setProfile(null);
@@ -71,9 +72,9 @@ export default function AdminProfilePage() {
     setSavingUsername(true);
 
     try {
-      const { data } = await api.put("/users/me/username", { username: nextUsername.trim() });
-      persistAuthState({ token: data.token, username: data.username, role: data.role });
-      setToken(data.token);
+      const { data } = await adminApi.put("/users/me/username", { username: nextUsername.trim() });
+      persistAdminAuthState({ token: data.token, username: data.username, role: data.role });
+      setAdminToken(data.token);
       setProfile((prev) => (prev ? { ...prev, username: data.username } : prev));
       setEditingUsername(false);
       setNextUsername(data.username);

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, use, useEffect, useState } from "react";
-import { api, getApiErrorMessage } from "@/lib/api";
+import { adminApi, getApiErrorMessage, initAdminApiAuth } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
 import BackArrowButton from "@/components/BackArrowButton";
 
@@ -100,10 +100,9 @@ export default function EditProblemPage({ params }: { params: Promise<{ id: stri
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    initAdminApiAuth();
 
-    Promise.all([api.get(`/problems/${id}`), api.get(`/problems/admin/${id}`)])
+    Promise.all([adminApi.get(`/problems/${id}`), adminApi.get(`/problems/admin/${id}`)])
       .then(([publicRes, adminRes]) => {
         const problem = publicRes.data;
         setTitle(problem.title ?? "");
@@ -139,10 +138,9 @@ export default function EditProblemPage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    initAdminApiAuth();
     try {
-      await api.put(`/problems/${id}`, {
+      await adminApi.put(`/problems/${id}`, {
         title,
         description,
         difficulty,
