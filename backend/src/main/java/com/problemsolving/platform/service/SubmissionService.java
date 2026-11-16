@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.problemsolving.platform.api.dto.nation.NationResultDto;
 import com.problemsolving.platform.api.dto.submission.SubmissionRequest;
 import com.problemsolving.platform.api.dto.submission.SubmissionResponse;
+import com.problemsolving.platform.config.JudgeProperties;
 import com.problemsolving.platform.domain.entity.Problem;
 import com.problemsolving.platform.domain.entity.Submission;
 import com.problemsolving.platform.domain.entity.User;
@@ -45,22 +46,27 @@ public class SubmissionService {
     private final ObjectMapper objectMapper;
     private final NationService nationService;
     private final PresenceService presenceService;
+    private final JudgeProperties judgeProperties;
 
     public SubmissionService(SubmissionRepository submissionRepository,
                              ProblemRepository problemRepository,
                              UserRepository userRepository,
                              ObjectMapper objectMapper,
                              NationService nationService,
-                             PresenceService presenceService) {
+                             PresenceService presenceService,
+                             JudgeProperties judgeProperties) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
         this.nationService = nationService;
         this.presenceService = presenceService;
+        this.judgeProperties = judgeProperties;
     }
 
     public SubmissionResponse submit(String username, SubmissionRequest request) {
+        judgeProperties.requireEnabled();
+
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 

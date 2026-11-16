@@ -21,12 +21,14 @@ spring:
       enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 app:
   jwt:
-    secret: cHJvYmxlbS1zb2x2aW5nLXBsYXRmb3JtLXNlY3VyZS1qd3Qtc2VjcmV0LWtleS0yMDI2
-    expiration-ms: 86400000
+    secret: ${APP_JWT_SECRET:cHJvYmxlbS1zb2x2aW5nLXBsYXRmb3JtLXNlY3VyZS1qd3Qtc2VjcmV0LWtleS0yMDI2}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+  judge:
+    enabled: ${APP_JUDGE_ENABLED:true}
   admin:
     bootstrap:
       # Creates the FIRST admin account only; never overwrites an existing admin.
@@ -36,8 +38,8 @@ app:
       email: ${ADMIN_EMAIL:}
       password: ${ADMIN_PASSWORD:}
 nation:
-  award-enabled: true
-  xp-multiplier: 1
+  award-enabled: ${NATION_AWARD_ENABLED:true}
+  xp-multiplier: ${NATION_XP_MULTIPLIER:1}
   # Phase 7 retention (defaults live in NationProperties; uncomment to override):
   # daily-goal-solves: 3            # first solves per local day that fill the goal
   # daily-goal-bonus-percent: 50    # extra XP for each solve while the day is under the goal

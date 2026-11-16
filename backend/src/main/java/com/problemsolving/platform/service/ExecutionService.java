@@ -2,6 +2,7 @@ package com.problemsolving.platform.service;
 
 import com.problemsolving.platform.api.dto.execution.ExecutionRequest;
 import com.problemsolving.platform.api.dto.execution.ExecutionResponse;
+import com.problemsolving.platform.config.JudgeProperties;
 import com.problemsolving.platform.domain.entity.Problem;
 import com.problemsolving.platform.domain.enums.SubmissionLanguage;
 import com.problemsolving.platform.repository.ProblemRepository;
@@ -23,12 +24,16 @@ import java.util.concurrent.TimeUnit;
 public class ExecutionService {
 
     private final ProblemRepository problemRepository;
+    private final JudgeProperties judgeProperties;
 
-    public ExecutionService(ProblemRepository problemRepository) {
+    public ExecutionService(ProblemRepository problemRepository, JudgeProperties judgeProperties) {
         this.problemRepository = problemRepository;
+        this.judgeProperties = judgeProperties;
     }
 
     public ExecutionResponse executeCustomTest(ExecutionRequest request) {
+        judgeProperties.requireEnabled();
+
         if (request.getLanguage() != SubmissionLanguage.JAVA) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JAVA execution is currently supported");
         }
