@@ -13,8 +13,10 @@ Create a Blueprint from the repository, then provide the prompted secret values:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 
-Render supplies `PORT` automatically. The Docker image listens on port `8080`, uses the
-`prod` Spring profile, and exposes `/actuator/health` for health checks. Keep
+Render supplies `PORT` automatically. The Blueprint keeps one instance because live
+presence/SSE state is held in memory and the import recovery flow assumes a single
+application instance. The Docker image listens on port `8080`, uses the `prod` Spring
+profile, and exposes `/actuator/health` for health checks. Keep
 `ADMIN_BOOTSTRAP_ENABLED=false` after the first admin account has been created. The
 `ADMIN_*` values can then be removed from the Render service.
 
