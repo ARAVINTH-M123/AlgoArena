@@ -1,4 +1,37 @@
-# AlgoArena deployment on Google Cloud Run
+# AlgoArena deployment
+
+## Render deployment
+
+The backend is configured as a Render Docker web service through [`render.yaml`](./render.yaml).
+Create a Blueprint from the repository, then provide the prompted secret values:
+
+- `DB_URL`: Prisma's **direct** PostgreSQL URL, for example
+  `postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require`.
+- `APP_JWT_SECRET`: a newly generated random value of at least 32 bytes.
+- `ADMIN_BOOTSTRAP_ENABLED`
+- `ADMIN_USERNAME`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+
+Render supplies `PORT` automatically. The Docker image listens on port `8080`, uses the
+`prod` Spring profile, and exposes `/actuator/health` for health checks. Keep
+`ADMIN_BOOTSTRAP_ENABLED=false` after the first admin account has been created. The
+`ADMIN_*` values can then be removed from the Render service.
+
+In the Cloudflare frontend's build settings, set:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://YOUR_RENDER_SERVICE.onrender.com/api
+```
+
+Rebuild the frontend after changing this value. The default production CORS origin is
+`https://algoarena.open-next.workers.dev`; set `APP_CORS_ALLOWED_ORIGIN_PATTERNS` in
+Render if the frontend uses a different custom domain.
+
+Use Prisma's direct TCP URL rather than `prisma+postgres://` or the pooled URL. The
+backend converts the standard Prisma URL to JDBC internally and requires SSL.
+
+## Google Cloud Run deployment
 
 Frontend origin:
 
@@ -160,7 +193,7 @@ The application creates an admin only when no admin exists. Enable bootstrap for
 ```bash
 gcloud run services update algoarena-api \
   --region=asia-south1 \
-  --update-env-vars=ADMIN_BOOTSTRAP_ENABLED=true,ADMIN_USERNAME=ruler_of_algoarena,ADMIN_EMAIL=aravinthm0123@gmail.com \
+  --update-env-vars=ADMIN_BOOTSTRAP_ENABLED=true,ADMIN_USERNAME=YOUR_ADMIN_USERNAME,ADMIN_EMAIL=YOUR_ADMIN_EMAIL \
   --update-secrets=ADMIN_PASSWORD=algoarena-admin-password:latest
 ```
 
