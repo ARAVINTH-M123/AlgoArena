@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>AlgoArena</title>
+  <rect width="64" height="64" rx="14" fill="#050505"/>
+  <path d="M32 10 12 54h10l4-9h12l4 9h10L32 10Zm0 17 4 10h-8l4-10Z" fill="#22c55e"/>
+</svg>
