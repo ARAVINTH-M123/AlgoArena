@@ -21,4 +21,6 @@ COPY --from=build --chown=algoarena:algoarena /workspace/target/platform-0.0.1-S
 USER algoarena
 EXPOSE 8080
 
+ENV SPRING_PROFILES_ACTIVE=prod
+
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-Djava.io.tmpdir=/tmp", "-jar", "/app/app.jar"]
