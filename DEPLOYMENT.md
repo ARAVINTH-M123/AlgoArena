@@ -20,6 +20,10 @@ profile, and exposes `/actuator/health` for health checks. Keep
 `ADMIN_BOOTSTRAP_ENABLED=false` after the first admin account has been created. The
 `ADMIN_*` values can then be removed from the Render service.
 
+The Render Blueprint enables the initial Hugging Face problem import through
+`APP_PROBLEM_IMPORT_ENABLED=true`. The first deployment imports the configured initial
+batch (500 problems by default); later restarts resume from the saved import state.
+
 In the Cloudflare frontend's build settings, set:
 
 ```text

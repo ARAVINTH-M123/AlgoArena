@@ -20,7 +20,7 @@ app:
   judge:
     enabled: false
   problem-import:
-    enabled: false
+    enabled: ${APP_PROBLEM_IMPORT_ENABLED:false}
 
 nation:
   award-enabled: false
